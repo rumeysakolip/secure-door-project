@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Geçici Şifre Al | Lab Erişim Paneli</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .container { max-width: 480px; margin: 50px auto; padding: 20px; }
+    .code-display {
+      background: var(--navy-dark);
+      border: 2px dashed var(--steel-light);
+      border-radius: 12px;
+      text-align: center;
+      padding: 30px;
+      margin: 20px 0;
+    }
+    .code-number {
+      font-size: 3.5rem;
+      letter-spacing: 0.6rem;
+      color: var(--steel-light);
+      font-weight: bold;
+    }
+    .btn-renew {
+      background: var(--steel-blue);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      width: 100%;
+      margin-top: 15px;
+      font-size: 1rem;
+      transition: background 0.2s;
+    }
+    .btn-renew:hover { background: #4b6688; }
+  </style>
+</head>
+<body>
+
+  <!-- Ortak Menü -->
+  <nav class="navbar">
+    <div class="logo">Lab Erişim Paneli</div>
+    <div class="nav-links">
+      <a href="index.html">Ana Sayfa</a>
+      <a href="gecici-sifre.html" style="color: var(--steel-light);">🔑 Geçici Şifre Al</a>
+      <a href="gecmis-girisler.html">📜 Giriş Geçmişi</a>
+      <a href="yetkilendirme.html">👥 Yetkilendirme</a>
+      <a href="ariza-gecmisi.html">🛠️ Arıza Geçmişi</a>
+      <a href="login.html" style="color: var(--status-red);">Çıkış Yap</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="card-box">
+      <h2 style="margin-top: 0;">Günlük Giriş Şifreniz</h2>
+      <p style="color: var(--text-muted); font-size: 0.9rem;">
+        Kartınız yanınızda olmadığında kapıdaki tuş takımından bu şifreyi girerek geçiş yapabilirsiniz.
+      </p>
+
+      <div class="code-display">
+        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px;">BUGÜN İÇİN GEÇERLİ 6 HANELİ ŞİFRE</div>
+        <div class="code-number" id="dailyCode">849201</div>
+      </div>
+
+      <div style="text-align: center; color: var(--status-amber); font-size: 0.85rem;">
+        ⏳ Şifre 24 saat içinde geçerlidir.
+      </div>
+
+      <!-- YENİLEME BUTONU -->
+      <button class="btn-renew" onclick="renewCode()">🔄 Yeni Şifre Üret</button>
+    </div>
+  </div>
+
+  <script>
+    function renewCode() {
+      // 6 haneli dinamik yeni şifre üretir
+      const newPass = Math.floor(100000 + Math.random() * 900000);
+      document.getElementById('dailyCode').innerText = newPass;
+      alert('Yeni günlük şifreniz oluşturuldu: ' + newPass);
+    }
+  </script>
+
+</body>
+</html>
