@@ -19,3 +19,49 @@ Bu komut PostgreSQL veritabanı, backend ve frontend servislerini otomatik olara
 
 ### Ortam Değişkenleri
 `.env.example` dosyasını `.env` olarak kopyalayın ve gerekli değerleri güncelleyin.
+
+
+## Docker ile Hızlı Başlangıç
+
+Projeyi bilgisayarınıza klonlayın:
+
+```bash
+git clone https://github.com/rumeysakolip/secure-door-project.git
+cd secure-door-project
+```
+
+Ortam değişkenleri dosyasını oluşturun:
+
+```bash
+cp .env.example .env
+```
+
+Windows PowerShell kullanıyorsanız:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Projeyi Docker ile başlatın:
+
+```bash
+docker compose up --build
+```
+
+Servislere aşağıdaki adreslerden erişebilirsiniz:
+
+- Frontend: `http://localhost:8080`
+- Backend: `http://localhost:3000`
+- PostgreSQL: `localhost:5432`
+
+Projeyi durdurmak için:
+
+```bash
+docker compose down
+```
+
+Veritabanı verileri Docker volume içerisinde kalıcı olarak saklanır. Verileri de tamamen silmek için:
+
+```bash
+docker compose down -v
+```
