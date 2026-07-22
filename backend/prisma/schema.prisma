@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,4 +7,212 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Modeller buraya eklenecek
+// ============================================================
+// 1. Bölüm (Basit referans)
+// ============================================================
+
+model Birim {
+  birimId        Int       @id @default(autoincrement())
+  kod            String    @unique @db.VarChar(16)
+  ad             String    @db.VarChar(128)
+  aktif          Boolean   @default(true)
+
+  kullanicilar   Kullanici[]
+  kartYetkilendirmeler KartYetkilendirme[]
+
+  @@map("birim")
+}
+
+// ============================================================
+// 2. Kullanıcılar (Hocalar)
+// ============================================================
+
+model Kullanici {
+  kullaniciId    BigInt    @id @default(autoincrement())
+  ad             String    @db.VarChar(64)
+  soyad          String    @db.VarChar(64)
+  eposta         String?   @db.VarChar(128)
+
+  birimId        Int?
+  birim          Birim?    @relation(fields: [birimId], references: [birimId])
+
+  durum          String    @default("aktif") @db.VarChar(16) // 'aktif', 'pasif', 'askida'
+  rol            String    @default("hoca") @db.VarChar(16)  // 'hoca', 'admin', 'sistem'
+
+  olusturmaTamani DateTime @default(now()) @db.Timestamptz()
+  guncellemeTamani DateTime @updatedAt @db.Timestamptz()
+
+  kartYetkilendirmeler KartYetkilendirme[]
+  erisimKayitlari ErisimKaydi[]
+  ihlalKayitlari IhlalKaydi[]
+
+  @@map("kullanici")
+}
+
+// ============================================================
+// 3. Kartlar (Temel bilgi)
+// ============================================================
+
+model Kart {
+  kartId         BigInt    @id @default(autoincrement())
+  kartUid        String    @unique @db.VarChar(29) // MIFARE UID
+  durum          String    @default("aktif") @db.VarChar(16) // 'aktif', 'kayip', 'iptal', 'hasarli'
+
+  verilicTarihi  DateTime  @default(now()) @db.Date()
+  iptalTarihi    DateTime? @db.Date()
+  iptalNedeni    String?   @db.VarChar(128)
+
+  erisimKayitlari ErisimKaydi[]
+  kartYetkilendirmeler KartYetkilendirme[]
+
+  @@map("kart")
+}
+
+// ============================================================
+// 4. Kart Yetkilendirme (YENİ — İlk bağlama)
+// ============================================================
+
+model KartYetkilendirme {
+  kartYetkiId    BigInt    @id @default(autoincrement())
+  kartUid        String    @unique @db.VarChar(29)
+  kart           Kart      @relation(fields: [kartUid], references: [kartUid])
+
+  kullaniciId    BigInt
+  kullanici      Kullanici @relation(fields: [kullaniciId], references: [kullaniciId])
+
+  birimId        Int?
+  birim          Birim?    @relation(fields: [birimId], references: [birimId])
+
+  durum          String    @default("aktif") @db.VarChar(16) // 'aktif', 'pasif', 'iptal'
+  yetkilendirilmeTarihi DateTime @default(now()) @db.Timestamptz()
+  yetkilendiren  BigInt?   // Kim tarafından yetkilendirildi (admin)
+  notlar         String?
+  sonKullanilmaTarihi DateTime? @db.Timestamptz()
+
+  @@map("kart_yetkilendirme")
+}
+
+// ============================================================
+// 5. Kapı
+// ============================================================
+
+model Kapi {
+  kapiId         Int       @id @default(autoincrement())
+  ad             String    @db.VarChar(64)
+  bina           String?   @db.VarChar(64)
+  kat            Int?
+  aciklama       String?   @db.VarChar(256)
+  durum          String    @default("aktif") @db.VarChar(16) // 'aktif', 'bakimda', 'devredisi'
+
+  cihazlar       CihazKapiAtama[]
+  erisimKayitlari ErisimKaydi[]
+
+  @@map("kapi")
+}
+
+// ============================================================
+// 6. Cihaz (ESP32)
+// ============================================================
+
+model Cihaz {
+  cihazId        Int       @id @default(autoincrement())
+  seriNo         String    @unique @db.VarChar(64)
+  durum          String    @default("aktif") @db.VarChar(16) // 'aktif', 'bakimda', 'arizali', 'emekli'
+  kurulumuTarihi DateTime  @default(now()) @db.Date()
+
+  kapilari       CihazKapiAtama[]
+  cihazDurumu    CihazDurumu[]
+  erisimKayitlari ErisimKaydi[]
+
+  @@map("cihaz")
+}
+
+// ============================================================
+// 7. Cihaz Kapı Atama
+// ============================================================
+
+model CihazKapiAtama {
+  atamaId        BigInt    @id @default(autoincrement())
+  cihazId        Int
+  cihaz          Cihaz     @relation(fields: [cihazId], references: [cihazId])
+
+  kapiId         Int
+  kapi           Kapi      @relation(fields: [kapiId], references: [kapiId])
+
+  baslangic      DateTime  @default(now()) @db.Timestamptz()
+  bitis          DateTime? @db.Timestamptz()
+
+  @@map("cihaz_kapi_atama")
+}
+
+// ============================================================
+// 8. Cihaz Durumu (YENİ — Monitoring)
+// ============================================================
+
+model CihazDurumu {
+  cihazDurumuId  BigInt    @id @default(autoincrement())
+  cihazId        Int
+  cihaz          Cihaz     @relation(fields: [cihazId], references: [cihazId])
+
+  kapiDurumu     String    @db.VarChar(16) // 'acik', 'kapali', 'arizali'
+  cihazDurumu    String    @db.VarChar(16) // 'cevrimici', 'cevimdisi', 'hatali'
+  bataryaSeviyesi Int?     // 0-100
+  wifiSignali    Int?      // -30 to -90 dBm
+  firmwareVersiyon String? @db.VarChar(32)
+  bellekKullanimi Int?     // KB
+  kapiAcilmaSayaci Int?
+  kapiAcilmaSuresi Int?    // saniye
+
+  sonHeartbeat   DateTime? @db.Timestamptz()
+  guncellenmeTarihi DateTime @default(now()) @db.Timestamptz()
+
+  @@map("cihaz_durumu")
+}
+
+// ============================================================
+// 9. Erişim Kayıtları (Giriş/Çıkış)
+// ============================================================
+
+model ErisimKaydi {
+  kayitId        BigInt
+  cihazOlayId    String    @unique @db.Uuid
+  cihazId        Int
+  cihaz          Cihaz     @relation(fields: [cihazId], references: [cihazId])
+
+  kapiId         Int
+  kapi           Kapi      @relation(fields: [kapiId], references: [kapiId])
+
+  kullaniciId    BigInt?
+  kullanici      Kullanici? @relation(fields: [kullaniciId], references: [kullaniciId])
+
+  kartId         BigInt?
+  kart           Kart?     @relation(fields: [kartId], references: [kartId])
+
+  okunanUid      String?   @db.VarChar(29)
+  dogrulamaYontemi String  @db.VarChar(8) // 'kart', 'pin'
+  sonuc          String    @db.VarChar(8) // 'izin', 'red'
+  redNedeni      String?   @db.VarChar(32) // 'yetkilendirilmemis', 'iptal', vb.
+
+  olayTamani     DateTime  @db.Timestamptz()
+  kayitTamani    DateTime  @default(now()) @db.Timestamptz()
+
+  @@id([kayitId, olayTamani])
+  @@map("erisim_kaydi")
+}
+
+// ============================================================
+// 10. İhlal Kayıtları (Kara liste)
+// ============================================================
+
+model IhlalKaydi {
+  ihlalId        BigInt    @id @default(autoincrement())
+  kullaniciId    BigInt
+  kullanici      Kullanici @relation(fields: [kullaniciId], references: [kullaniciId])
+
+  tarih          DateTime  @db.Date()
+  tur            String    @db.VarChar(32) // 'cikis_kacirma', 'kart_kayip', vb.
+  aciklama       String?
+  olusturmaTamani DateTime @default(now()) @db.Timestamptz()
+
+  @@map("ihlal_kaydi")
+}
