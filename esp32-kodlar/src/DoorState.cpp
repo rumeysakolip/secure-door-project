@@ -10,7 +10,6 @@ const unsigned long DoorState::DURUM_SURELERI[] = {
     0,      // BEKLEMEDE
     3000,   // OKUNUYOR
     5000,   // ONAYLANDI (GİRİŞ)
-    2000,   // CIKIS_YAPILDI
     2000,   // REDDEDILDI
     0       // ALARM
 };
@@ -32,10 +31,7 @@ bool DoorState::durumGecisiYap(Durum yeniDurum) {
             izinVerildi = (yeniDurum != Durum::OKUNUYOR);
             break;
         case Durum::ONAYLANDI:
-        case Durum::CIKIS_YAPILDI:
         case Durum::REDDEDILDI:
-            izinVerildi = (yeniDurum == Durum::BEKLEMEDE || yeniDurum == Durum::ALARM);
-            break;
         case Durum::ALARM:
             izinVerildi = (yeniDurum == Durum::BEKLEMEDE);
             break;
@@ -46,9 +42,9 @@ bool DoorState::durumGecisiYap(Durum yeniDurum) {
         durumDegisimZamani = millis();
         Serial.printf("[DoorState] Durum Degisti -> %s\n", durumMetni(mevcutDurum));
 
-        // Kilit Tetikleme Mantığı
+        // Kilit Tetikleme Mantığı (Sadece giriş onaylandığında kapı açılır)
         if (mevcutDurum == Durum::ONAYLANDI) {
-            lock.unlockDoor(); // Sadece onaylı girişlerde kilit açılır
+            lock.unlockDoor(); 
         }
 
         return true;
@@ -61,7 +57,7 @@ void DoorState::guncelle() {
     
     if (zamanSiniri > 0 && (millis() - durumDegisimZamani >= zamanSiniri)) {
         if (mevcutDurum == Durum::OKUNUYOR || mevcutDurum == Durum::REDDEDILDI || 
-            mevcutDurum == Durum::ONAYLANDI || mevcutDurum == Durum::CIKIS_YAPILDI) {
+            mevcutDurum == Durum::ONAYLANDI) {
             durumGecisiYap(Durum::BEKLEMEDE);
         }
     }
@@ -76,7 +72,6 @@ const char* DoorState::durumMetni(Durum durum) {
         case Durum::BEKLEMEDE:     return "BEKLEMEDE";
         case Durum::OKUNUYOR:      return "OKUNUYOR";
         case Durum::ONAYLANDI:     return "ONAYLANDI";
-        case Durum::CIKIS_YAPILDI: return "CIKIS_YAPILDI";
         case Durum::REDDEDILDI:    return "REDDEDILDI";
         case Durum::ALARM:         return "ALARM";
         default:                   return "BILINMEYEN";
