@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Geçmiş Giriş Kayıtları | Yönetim</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .container { max-width: 1100px; margin: 30px auto; padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--steel-blue); }
+    th { color: var(--text-muted); }
+    
+    .date-search-bar {
+      width: 100%;
+      max-width: 300px;
+      padding: 10px 15px;
+      background: var(--navy-dark);
+      border: 1px solid var(--steel-blue);
+      border-radius: 8px;
+      color: white;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="logo">Lab Erişim Paneli</div>
+    <div class="nav-links">
+      <a href="index.html">Ana Sayfa</a>
+      <a href="gecici-sifre.html">🔑 Geçici Şifre Al</a>
+      <a href="gecmis-girisler.html" style="color: var(--steel-light);">📜 Giriş Geçmişi</a>
+      <a href="yetkilendirme.html">👥 Yetkilendirme</a>
+      <a href="ariza-gecmisi.html">🛠️ Arıza Geçmişi</a>
+     <a href="login.html" style="color: var(--status-red);">Çıkış Yap</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2>📜 Detaylı Kapı Giriş Geçmişi</h2>
+
+    <div class="card-box">
+      <!-- SADECE TARİH FİLTRESİ -->
+      <div style="margin-bottom: 15px;">
+        <input 
+          type="text" 
+          list="history-date-suggestions" 
+          class="date-search-bar" 
+          placeholder="📅 Tarih seçin veya yazın..."
+        >
+        <datalist id="history-date-suggestions">
+          <option value="22.07.2026 (Bugün)">
+          <option value="21.07.2026 (Dün)">
+          <option value="20.07.2026">
+          <option value="19.07.2026">
+        </datalist>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Tarih / Saat</th>
+            <th>Kullanıcı Adı</th>
+            <th>Rol</th>
+            <th>Yöntem</th>
+            <th>Sonuç</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>22.07.2026 14:32</td>
+            <td>Dr. Ahmet Yılmaz</td>
+            <td>Hoca</td>
+            <td>🔑 Günlük Şifre</td>
+            <td><span class="badge badge-success">Giriş İzin Verildi</span></td>
+          </tr>
+          <tr>
+            <td>22.07.2026 14:28</td>
+            <td>Mehmet Can</td>
+            <td>Öğrenci</td>
+            <td>💳 Kart</td>
+            <td><span class="badge badge-success">Giriş İzin Verildi</span></td>
+          </tr>
+          <tr>
+            <td>21.07.2026 18:45</td>
+            <td>Ali Demir</td>
+            <td>Öğrenci</td>
+            <td>💳 Kart</td>
+            <td><span class="badge badge-danger">Reddedildi (Mesai Dışı)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</body>
+</html>

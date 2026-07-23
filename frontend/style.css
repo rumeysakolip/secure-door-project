@@ -1,34 +1,105 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+:root {
+  --navy-dark: #0B132B;
+  --navy-light: #1C2541;
+  --steel-blue: #3A506B;
+  --steel-light: #5BC0BE;
+  
+  --status-green: #2ECC71;
+  --status-red: #E74C3C;
+  --status-amber: #F39C12;
+  
+  --text-main: #F0F4F8;
+  --text-muted: #9BA4B5;
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  background-color: var(--navy-dark);
+  color: var(--text-main);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
 }
 
-.container {
-    background: white;
-    padding: 40px;
-    border-radius: 10px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-    text-align: center;
-    max-width: 500px;
+/* Üst Menü / Navbar */
+.navbar {
+  background-color: var(--navy-light);
+  padding: 15px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--steel-blue);
 }
 
-h1 {
-    color: #333;
-    margin-bottom: 20px;
-    font-size: 2.5em;
+.navbar .logo {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--steel-light);
 }
 
-p {
-    color: #666;
-    font-size: 1.1em;
+.nav-links a {
+  color: var(--text-main);
+  text-decoration: none;
+  margin-left: 20px;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover {
+  color: var(--steel-light);
+}
+
+/* Kart / Kutu Bileşeni */
+.card-box {
+  background: var(--navy-light);
+  border: 1px solid var(--steel-blue);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.card-box.clickable {
+  cursor: pointer;
+}
+
+.card-box.clickable:hover {
+  transform: translateY(-3px);
+  border-color: var(--steel-light);
+}
+
+/* Durum Etiketleri */
+.badge {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  display: inline-block;
+}
+
+.badge-success { background: rgba(46, 204, 113, 0.2); color: var(--status-green); }
+.badge-danger { background: rgba(231, 76, 60, 0.2); color: var(--status-red); }
+.badge-warning { background: rgba(243, 156, 18, 0.2); color: var(--status-amber); }
+
+/* Form ve Inputlar */
+.form-control {
+  width: 100%;
+  padding: 12px;
+  background: var(--navy-dark);
+  border: 1px solid var(--steel-blue);
+  border-radius: 6px;
+  color: white;
+  box-sizing: border-box;
+  margin-top: 6px;
+  margin-bottom: 16px;
+}
+
+.btn-primary {
+  background: var(--steel-light);
+  color: var(--navy-dark);
+  border: none;
+  padding: 12px 20px;
+  font-weight: bold;
+  border-radius: 6px;
+  cursor: pointer;
+  width: 100%;
 }
