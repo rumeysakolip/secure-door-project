@@ -33,7 +33,7 @@ app.use('/api/erisim-kayitlari', erisimKaydiRotalari);
 app.use('/api/ihlal-kayitlari', ihlalKaydiRotalari);
 
 app.get('/', (req, res) => {
-    res.json({ message: 'Backend tüm tablolara uygun mock API ile çalışıyor!' });
+    res.json({ message: 'Backend, Prisma ORM ve PostgreSQL veritabanı ile aktif olarak çalışıyor!' });
 });
 
 app.listen(PORT, () => {

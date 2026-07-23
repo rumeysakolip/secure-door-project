@@ -1,23 +1,47 @@
 const express = require('express');
 const router = express.Router();
+const prisma = require('../config/prisma');
 
-const mockKullanicilar = [
-    { kullaniciId: 1, ad: "Ahmet", soyad: "Yılmaz", eposta: "ahmet@uni.edu.tr", durum: "aktif", rol: "hoca", birimId: 1 },
-    { kullaniciId: 2, ad: "Ayşe", soyad: "Kaya", eposta: "ayse@uni.edu.tr", durum: "aktif", rol: "hoca", birimId: 2 }
-];
+// Kullanıcıları listele (durum ve rol parametrelerine göre isteğe bağlı filtreleme ile)
+router.get('/', async (req, res) => {
+    try {
+        const { durum, rol } = req.query;
+        const whereClause = {};
+        
+        if (durum) whereClause.durum = durum;
+        if (rol) whereClause.rol = rol;
 
-router.get('/', (req, res) => {
-    let sonuc = mockKullanicilar;
-    const { durum, rol } = req.query;
-    if (durum) sonuc = sonuc.filter(k => k.durum === durum);
-    if (rol) sonuc = sonuc.filter(k => k.rol === rol);
-    res.json(sonuc);
+        const kullanicilar = await prisma.kullanici.findMany({
+            where: whereClause,
+            include: {
+                birim: true
+            }
+        });
+        
+        res.json(kullanicilar);
+    } catch (error) {
+        console.error("Kullanıcılar listelenirken hata:", error);
+        res.status(500).json({ hata: "Sunucu hatası" });
+    }
 });
 
-router.get('/:id', (req, res) => {
-    const kullanici = mockKullanicilar.find(k => k.kullaniciId === parseInt(req.params.id));
-    if (!kullanici) return res.status(404).json({ hata: "Kullanıcı bulunamadı" });
-    res.json(kullanici);
+// ID'ye göre tek bir kullanıcı getir
+router.get('/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const kullanici = await prisma.kullanici.findUnique({
+            where: { kullaniciId: parseInt(id) },
+            include: {
+                birim: true
+            }
+        });
+        
+        if (!kullanici) return res.status(404).json({ hata: "Kullanıcı bulunamadı" });
+        res.json(kullanici);
+    } catch (error) {
+        console.error("Kullanıcı getirilirken hata:", error);
+        res.status(500).json({ hata: "Sunucu hatası" });
+    }
 });
 
 module.exports = router;

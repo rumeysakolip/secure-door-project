@@ -16,11 +16,12 @@
   "type": "commonjs",
   "dependencies": {
     "@faker-js/faker": "^8.4.1",
+    "@prisma/adapter-pg": "^7.9.0",
     "@prisma/client": "^7.9.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^4.22.2",
-    "pg": "^8.11.0"
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "@prisma/config": "^7.9.0",
