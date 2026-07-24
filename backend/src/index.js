@@ -21,13 +21,15 @@ const grupRotalari = require('./routes/gruplar');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+const mqttService = require('./services/mqttService');
 const { initSifreCron } = require('./cron/sifreCron');
 const { initIhlalCron } = require('./cron/ihlalCron');
 
 // Cron zamanlayıcılarını başlat
+mqttService.connect();
 initSifreCron();
 initIhlalCron();
+
 
 // Middleware'ler
 app.use(express.json());
@@ -75,3 +77,12 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`🚀 Backend sunucusu ${PORT} portunda başlatıldı.`);
 });
+const passwordService = require('./services/passwordService');
+
+
+   app.listen(PORT, () => {
+     console.log(`Sunucu ${PORT} portunda çalışıyor.`);
+     mqttService.connect();
+     passwordService.initCron();
+
+   });

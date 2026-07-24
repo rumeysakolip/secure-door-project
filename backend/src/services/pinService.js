@@ -14,24 +14,23 @@ function generateRandomPin() {
 /**
  * ESP32'ye (Push yöntemiyle) güncel kullanıcı şifre listesini gönderir.
  */
-async function pushOfflineListToESP32(userPinList) {
+async function pushOfflineListToESP32(cihazId, userPinList) {
+  const mqttService = require('./mqttService');
   try {
-    console.log(`[PUSH] ESP32'ye kişiye özel şifre listesi gönderiliyor... Toplam Kişi: ${userPinList.length}`);
-    
-    // Format: [ { "u": "1", "p": "123456" }, { "u": "2", "p": "654321" } ]
-    const payload = JSON.stringify(userPinList);
+    console.log(`[PUSH] Cihaz ${cihazId} için şifre listesi MQTT ile gönderiliyor... Toplam Kişi: ${userPinList.length}`);
 
-    // TODO: İleride MQTT veya HTTP POST entegrasyonu buraya gelecek
-    const isEspReachable = true; 
+    const gonderildi = mqttService.publishCommand(cihazId, 'sifre-guncelleme', {
+      liste: userPinList,
+    });
 
-    if (!isEspReachable) {
-      throw new Error("ESP32 cihazından yanıt alınamadı (Çevrimdışı).");
+    if (!gonderildi) {
+      throw new Error('MQTT broker bağlı değil.');
     }
 
-    console.log(`[PUSH BAŞARILI] ESP32 yeni şifre listesini hafızasına kaydetti!`);
+    console.log(`[PUSH BAŞARILI] Cihaz ${cihazId} için publish yapıldı.`);
     return true;
   } catch (error) {
-    console.error(`[PUSH BAŞARISIZ] ESP32'ye liste itilemedi: ${error.message}`);
+    console.error(`[PUSH BAŞARISIZ] Cihaz ${cihazId} için liste gönderilemedi: ${error.message}`);
     return false;
   }
 }
@@ -125,7 +124,7 @@ async function generateOfflineListForDevice(cihazId) {
     }
 
     // 5. Oluşan listeyi ESP32'ye push et
-    await pushOfflineListToESP32(userPinListForESP);
+    await pushOfflineListToESP32(cihazId, userPinListForESP);
 
     return {
       surumId: yeniSurum.surumId.toString(),
