@@ -17,7 +17,11 @@ services:
     restart: unless-stopped
 
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -26,15 +30,18 @@ services:
       - kapi-network
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+
     container_name: kapi-sistemi-backend
 
     ports:
-      - "${BACKEND_PORT}:3000"
+      - "${BACKEND_PORT:-3000}:3000"
 
     environment:
       DATABASE_URL: ${DATABASE_URL}
       NODE_ENV: development
+      PORT: 3000
 
     depends_on:
       db:
@@ -50,7 +57,9 @@ services:
       - kapi-network
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+
     container_name: kapi-sistemi-frontend
 
     ports:

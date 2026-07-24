@@ -5,18 +5,21 @@ WORKDIR /app
 # 1. Önce paket listesini kopyala
 COPY package*.json ./
 
-# 2. Prisma şemasını erkenden kopyala ki npm install onu görebilsin
+# 2. Prisma şemasını erkenden kopyala
 COPY prisma ./prisma/
 
 # 3. Kütüphaneleri kur
 RUN npm install
 
-# 4. Kalan tüm kodları kopyala
+# 4. Prisma Client oluştur
+RUN npx prisma generate
+
+# 5. Kalan tüm kodları kopyala
 COPY . .
 
-# 5. İŞTE CAN ALICI NOKTA: Prisma beynini (Client) oluştur!
-RUN npx prisma generate
+# 6. Başlangıç scriptine çalıştırma izni ver
+RUN chmod +x /app/docker-entrypoint.sh
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
