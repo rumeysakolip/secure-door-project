@@ -8,9 +8,8 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-
 // ============================================================
-// 1. Bölüm (Basit referans)
+// 1. Bölüm (Önce Birim tanımlanmalı!)
 // ============================================================
 
 model Birim {
@@ -35,6 +34,11 @@ model Kullanici {
   soyad            String     @db.VarChar(64)
   eposta           String?    @db.VarChar(128)
 
+  // --- GÖREV 4.1 İÇİN EKLENMESİ GEREKENLER ---
+  pinHash          String?    @db.VarChar(255) // Hash'lenmiş PIN
+  pinSonDegisim    DateTime?  @db.Timestamptz() // PIN'in son değiştirilme zamanı
+  // ------------------------------------------
+
   birimId          Int?
   birim            Birim?     @relation(fields: [birimId], references: [birimId])
 
@@ -47,6 +51,7 @@ model Kullanici {
   kartYetkilendirmeler KartYetkilendirme[]
   erisimKayitlari ErisimKaydi[]
   ihlalKayitlari IhlalKaydi[]
+  offlineListeUyeleri  OfflineListeUyesi[]
 
   @@map("kullanici")
 }
@@ -125,6 +130,7 @@ model Cihaz {
   kapilari        CihazKapiAtama[]
   cihazDurumlari  CihazDurumu[]
   erisimKayitlari ErisimKaydi[]
+  offlineListeSurumleri OfflineListeSurumu[]
 
   @@map("cihaz")
 }
@@ -151,21 +157,25 @@ model CihazKapiAtama {
 // 8. Cihaz Durumu (Monitoring)
 // ============================================================
 
+// ============================================================
+// 8. Cihaz Durumu (Monitoring)
+// ============================================================
+
 model CihazDurumu {
-  cihazDurumuId   BigInt    @id @default(autoincrement())
-  cihazId         Int
-  cihaz           Cihaz     @relation(fields: [cihazId], references: [cihazId])
+  cihazDurumuId    BigInt    @id @default(autoincrement())
+  cihazId          Int
+  cihaz            Cihaz     @relation(fields: [cihazId], references: [cihazId])
 
-  kapiDurumu      String    @db.VarChar(16) // 'acik', 'kapali', 'arizali'
-  cihazDurumTip   String    @db.VarChar(16) // 'cevrimici', 'cevimdisi', 'hatali'
-  bataryaSeviyesi Int?      // 0-100
-  wifiSignali     Int?      // -30 to -90 dBm
-  firmwareVersiyon String? @db.VarChar(32)
-  bellekKullanimi Int?      // KB
+  kapiDurumu       String    @db.VarChar(16) // 'acik', 'kapali', 'arizali'
+  cihazDurumTip    String    @db.VarChar(16) // 'cevrimici', 'cevimdisi', 'hatali'
+  bataryaSeviyesi  Int?      // 0-100
+  wifiSignali      Int?      // -30 to -90 dBm
+  firmwareVersiyon String?   @db.VarChar(32)
+  bellekKullanimi  Int?      // KB
   kapiAcilmaSayaci Int?
-  kapiAcilmaSuresi Int?    // saniye
+  kapiAcilmaSuresi Int?      // saniye
 
-  sonHeartbeat    DateTime? @db.Timestamptz()
+  sonHeartbeat     DateTime? @db.Timestamptz()
   guncellenmeTarihi DateTime @default(now()) @db.Timestamptz()
 
   @@map("cihaz_durumu")
@@ -193,6 +203,11 @@ model ErisimKaydi {
   okunanUid       String?   @db.VarChar(29)
   dogrulamaYontemi String   @db.VarChar(8) // 'kart', 'pin'
   sonuc           String    @db.VarChar(8) // 'izin', 'red'
+  
+  // --- BURAYI EKLİYORUZ ---
+  yon             String    @default("giris") @db.VarChar(8) // 'giris', 'cikis'
+  // ------------------------
+
   redNedeni       String?   @db.VarChar(32) // 'yetkilendirilmemis', 'iptal', vb.
 
   olayTamani      DateTime  @db.Timestamptz()
@@ -232,4 +247,35 @@ model ArizaBildirimi {
   olusturulma DateTime @default(now()) @db.Timestamptz()
 
   @@map("ariza_bildirimi")
+}// ============================================================
+// 12. Offline Çalışma Listesi (ESP32 İçin)
+// ============================================================
+
+model OfflineListeSurumu {
+  surumId         BigInt    @id @default(autoincrement())
+  cihazId         Int
+  cihaz           Cihaz     @relation(fields: [cihazId], references: [cihazId])
+  olusturmaTarihi DateTime  @default(now()) @db.Timestamptz()
+  hash            String?   @db.VarChar(64)
+
+  uyeler          OfflineListeUyesi[]
+
+  @@map("offline_liste_surumu")
+}
+
+model OfflineListeUyesi {
+  uyeId           BigInt    @id @default(autoincrement())
+  surumId         BigInt
+  surum           OfflineListeSurumu @relation(fields: [surumId], references: [surumId], onDelete: Cascade)
+  
+  kullaniciId     BigInt
+  kullanici       Kullanici @relation(fields: [kullaniciId], references: [kullaniciId])
+  
+  kartUid         String?   @db.VarChar(29)
+  pinHmac         String?   @db.VarChar(64) // HMAC-SHA256 şifreli PIN
+  gunMaskesi      Int?      
+  baslangicSaati  String?   @db.VarChar(8)  
+  bitisSaati      String?   @db.VarChar(8)  
+
+  @@map("offline_liste_uyesi")
 }

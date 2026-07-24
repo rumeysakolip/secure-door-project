@@ -27,5 +27,26 @@ router.get('/:id', async (req, res) => {
         res.status(500).json({ hata: "Sunucu hatası" });
     }
 });
+const { generateOfflineListForDevice } = require('../services/pinService');
+
+// Görev 4.3: Belirli bir cihaz için offline çalışma listesi üretme endpoint'i
+router.post('/:id/offline-liste-uret', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const sonuc = await generateOfflineListForDevice(id);
+    
+    return res.status(201).json({
+      success: true,
+      message: "POST /api/cihazlar/:id/offline-liste-uret başarıyla çalıştı. Offline liste oluşturuldu.",
+      data: sonuc
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Offline liste üretilirken hata oluştu.",
+      error: error.message
+    });
+  }
+});
 
 module.exports = router;

@@ -24,6 +24,26 @@ router.get('/', async (req, res) => {
         res.status(500).json({ hata: "Sunucu hatası" });
     }
 });
+const express = require('express');
+const router = express.Router();
+const { refreshSingleUserPin } = require('../services/pinService');
+
+// POST /api/kullanicilar/:id/sifre-yenile
+router.post('/:id/sifre-yenile', async (req, res) => {
+  try {
+    const sonuc = await refreshSingleUserPin(req.params.id);
+    return res.status(200).json({
+      mesaj: 'Kullanıcının şifresi başarıyla yenilendi ve MQTT ile cihaza bildirildi.',
+      veri: sonuc
+    });
+  } catch (error) {
+    return res.status(400).json({
+      hata: error.message
+    });
+  }
+});
+
+module.exports = router;
 
 // ID'ye göre tek bir kullanıcı getir
 router.get('/:id', async (req, res) => {
