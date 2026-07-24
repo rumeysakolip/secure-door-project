@@ -1,6 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 
+// Prisma şemasındaki BigInt alanlar (kullaniciId, kartId, kayitId vb.)
+// JSON.stringify tarafından doğrudan serileştirilemiyor ("Do not know how
+// to serialize a BigInt" hatası). res.json() bu fonksiyonu kullandığı için
+// tüm uygulama genelinde BigInt'leri string'e çevirecek tek bir dönüşüm
+// tanımlıyoruz; böylece her route'ta ayrı ayrı çevirme yapmaya gerek kalmıyor.
+BigInt.prototype.toJSON = function () {
+    return this.toString();
+};
+
 // Rotaları içe aktarma
 const birimRotalari = require('./routes/birimler');
 const kullaniciRotalari = require('./routes/kullanicilar');

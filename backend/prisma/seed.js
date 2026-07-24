@@ -1,7 +1,9 @@
-const { PrismaClient } = require('@prisma/client');
 const { faker } = require('@faker-js/faker');
 
-const prisma = new PrismaClient();
+// Uygulamanın kullandığı, driver adapter ile kurulmuş aynı Prisma client'ı
+// kullan (Prisma 7'de schema.prisma'da datasource url tanımlı olmadığı için
+// adapter'sız `new PrismaClient()` çağrısı hata veriyor).
+const prisma = require('../src/config/prisma');
 
 async function main() {
   console.log('🌱 Seed script başlıyor...\n');
@@ -97,7 +99,7 @@ async function main() {
     data: {
       cihazId: cihaz.cihazId,
       kapiDurumu: 'kapali',
-      cihazDurumu: 'cevrimici',
+      cihazDurumTip: 'cevrimici',
       bataryaSeviyesi: 85,
       wifiSignali: -55,
       firmwareVersiyon: '1.0.0',
