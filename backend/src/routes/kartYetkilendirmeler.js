@@ -5,7 +5,7 @@ const prisma = require('../config/prisma');
 // Tüm yetkileri veritabanından getir
 router.get('/', async (req, res) => {
     try {
-        const yetkiler = await prisma.kartYetki.findMany({
+        const yetkiler = await prisma.kartYetkilendirme.findMany({
             include: {
                 kullanici: true,
                 birim: true
@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const yetki = await prisma.kartYetki.findUnique({
+        const yetki = await prisma.kartYetkilendirme.findUnique({
             where: { kartYetkiId: parseInt(id) },
             include: {
                 kullanici: true,
