@@ -218,3 +218,18 @@ model IhlalKaydi {
 
   @@map("ihlal_kaydi")
 }
+
+// ============================================================
+// 11. Arıza Bildirimleri
+// ============================================================
+
+model ArizaBildirimi {
+  arizaId     Int      @id @default(autoincrement())
+  bildiren    String   @default("Anonim") @db.VarChar(128)
+  arizaTuru   String   @db.VarChar(64)
+  aciklama    String   @db.VarChar(512)
+  durum       String   @default("OPEN") @db.VarChar(16) // OPEN, IN_PROGRESS, RESOLVED
+  olusturulma DateTime @default(now()) @db.Timestamptz()
+
+  @@map("ariza_bildirimi")
+}

@@ -4,34 +4,47 @@
 #include <string>
 #include <queue>
 
-// native ortamda da std::string desteğini garanti altına al
+// Native test ortamlarında std::string desteğini garanti altına al
 #ifndef ARDUINOJSON_ENABLE_STD_STRING
 #define ARDUINOJSON_ENABLE_STD_STRING 1
 #endif
 #include <ArduinoJson.h>
 
-// PubSubClient/WiFi gibi donanıma özgü kısımlar sadece esp32dev ortamında
-// derlenir; native testte bu blok atlanır.
+// PubSubClient ve WiFi kısımları sadece ESP32 derlemesinde aktif olur
 #ifdef ARDUINO
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 #endif
 
-enum class CommandType { DOOR_OPEN, PASSWORD_RENEW, BLOCK, UNBLOCK, UNKNOWN };
-
-struct EntryEvent {
-    std::string cardId;
-    std::string method;          // "kart" | "sifre" | "uzaktan"
-    std::string result;          // "basarili" | "basarisiz" | "bloke"
-    unsigned long timestampEpoch = 0;
+// Backend'den ESP32'ye gelebilecek komut tipleri
+enum class CommandType {
+    DOOR_OPEN,       // Uzaktan kapı açma
+    PASSWORD_RENEW,  // Günlük şifre listesi yenileme
+    BLOCK,           // Kartı geçici engelleme
+    UNBLOCK,         // Kart engelini kaldırma
+    UNKNOWN
 };
 
+// Prisma 'ErisimKaydi' (erisim_kaydi) tablosu ile %100 uyumlu olay yapısı
+struct EntryEvent {
+    std::string cihazOlayId;      // UUID (Çevrimdışı/Canlı kayıt benzersiz kimliği)
+    int cihazId = 1;              // DB Cihaz ID
+    int kapiId = 1;               // DB Kapı ID
+    std::string okunanUid;        // Okunan RFID Kart UID ("A1:B2:C3:D4") veya PIN ise boş
+    std::string dogrulamaYontemi; // "kart" | "pin" | "uzaktan"
+    std::string sonuc;            // "izin" | "red"
+    std::string redNedeni;        // "tanimsiz_kart", "gecersiz_pin", "yetkisiz"
+    uint32_t timestampEpoch = 0;  // Unix Epoch Zaman Damgası (Saniye)
+};
+
+// Sunucudan (MQTT) ESP32'ye gelen komut yapısı
 struct DeviceCommand {
     CommandType type = CommandType::UNKNOWN;
     std::string issuedByUserId;
-    std::string newPassword;     // sadece PASSWORD_RENEW için doludur
-    unsigned long timestampEpoch = 0;
+    std::string newPasswordListJson; // PASSWORD_RENEW için gelen JSON dizisi
+    std::string targetCardUid;       // BLOCK/UNBLOCK için hedef kart UID
+    uint32_t timestampEpoch = 0;
 };
 
 class MqttManager {
@@ -40,21 +53,21 @@ public:
     MqttManager(const char *brokerHost, uint16_t brokerPort);
 
     void update();
-    
+
     bool publishEntryEvent(const EntryEvent &event);
-    bool publishHeartbeat();
-    bool publishPasswordAck(bool success); // Sunucuya Şifre Onay (ACK) Yanıtı Fırlatır
+    bool publishHeartbeat(int cihazId = 1);
+    bool publishPasswordAck(bool success);
 
     bool hasPendingCommand() const;
     DeviceCommand popPendingCommand();
 
-    // PubSubClient'ın çağırdığı ham callback
     void handleIncomingMessage(char *topic, byte *payload, unsigned int length);
 #endif
 
-    // ---- Donanımdan bağımsız, native ortamda test edilebilen saf mantık ----
+    // Donanımdan bağımsız static metodlar (Native testler için)
     static std::string buildEventTopic();
     static std::string buildCommandTopic();
+    static std::string buildHeartbeatTopic();
     static std::string serializeEntryEvent(const EntryEvent &event);
     static DeviceCommand parseCommand(const std::string &jsonPayload);
 
@@ -64,12 +77,12 @@ private:
     PubSubClient _mqttClient{_wifiClient};
     std::string _eventTopic;
     std::string _commandTopic;
+    std::string _heartbeatTopic;
 
     std::queue<DeviceCommand> _commandQueue;
 
-    unsigned long _lastReconnectAttemptMs = 0;
-    unsigned long _reconnectBackoffMs = 1000;
-    static const unsigned long MAX_RECONNECT_BACKOFF_MS = 30000;
+    uint32_t _lastReconnectAttemptMs = 0;
+    uint32_t _reconnectBackoffMs = 1000;
 
     void attemptReconnect();
 #endif
