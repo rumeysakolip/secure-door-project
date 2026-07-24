@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
             take: limit,
             skip: offset,
             orderBy: {
-                olayZamani: 'desc' // Kayıtları en yeniden eskiye sıralar
+                olayTamani: 'desc' // Kayıtları en yeniden eskiye sıralar
             },
             include: {
                 cihaz: true,

@@ -5,7 +5,7 @@ const prisma = require('../config/prisma');
 // Tüm ihlalleri veritabanından getir
 router.get('/', async (req, res) => {
     try {
-        const ihlaller = await prisma.ihlal.findMany({
+        const ihlaller = await prisma.ihlalKaydi.findMany({
             include: {
                 kullanici: true
             }
@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const ihlal = await prisma.ihlal.findUnique({
+        const ihlal = await prisma.ihlalKaydi.findUnique({
             where: { ihlalId: parseInt(id) },
             include: {
                 kullanici: true

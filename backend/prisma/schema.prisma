@@ -10,6 +10,94 @@ datasource db {
 }
 
 // ============================================================
+// Enum tanımları (kapalı/sabit değer kümesine sahip alanlar için)
+// ============================================================
+
+enum KullaniciDurum {
+  aktif
+  pasif
+  askida
+}
+
+enum KullaniciRol {
+  hoca
+  admin
+  sistem
+}
+
+enum KartDurum {
+  aktif
+  kayip
+  iptal
+  hasarli
+}
+
+enum KartYetkilendirmeDurum {
+  aktif
+  pasif
+  iptal
+}
+
+enum KapiDurum {
+  aktif
+  bakimda
+  devredisi
+}
+
+enum CihazDurum {
+  aktif
+  bakimda
+  arizali
+  emekli
+}
+
+enum KapiAcikKapaliDurum {
+  acik
+  kapali
+  arizali
+}
+
+enum CihazBaglantiDurumu {
+  cevrimici
+  cevrimdisi
+  hatali
+}
+
+enum DogrulamaYontemi {
+  kart
+  pin
+}
+
+enum ErisimSonucu {
+  izin
+  red
+}
+
+enum ArizaDurum {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+enum OlayKaynak {
+  cihaz
+  sistem
+  kullanici
+}
+
+enum DenetimIslemTuru {
+  olustur
+  guncelle
+  sil
+}
+
+enum SenkronDurum {
+  basladi
+  tamamlandi
+  hata
+}
+
+// ============================================================
 // 1. Bölüm (Basit referans)
 // ============================================================
 
@@ -38,8 +126,15 @@ model Kullanici {
   birimId          Int?
   birim            Birim?     @relation(fields: [birimId], references: [birimId])
 
-  durum            String     @default("aktif") @db.VarChar(16) // 'aktif', 'pasif', 'askida'
-  rol              String     @default("hoca") @db.VarChar(16)  // 'hoca', 'admin', 'sistem'
+  durum            KullaniciDurum @default(aktif)
+  rol              KullaniciRol   @default(hoca)
+
+  // Kişiye özel PIN (argon2 ile hashlenmiş). Düz PIN veritabanında hiç
+  // saklanmaz; pinGecerlilikBitis, üretim anında dönen düz PIN'in ne kadar
+  // süre "hâlâ geçerli/gösterilebilir" sayılacağını belirtir.
+  pinHash            String?   @db.VarChar(255)
+  pinSonDegisim      DateTime? @db.Timestamptz()
+  pinGecerlilikBitis DateTime? @db.Timestamptz()
 
   olusturmaTamani DateTime @default(now()) @db.Timestamptz()
   guncellemeTamani DateTime @updatedAt @db.Timestamptz()
@@ -47,6 +142,11 @@ model Kullanici {
   kartYetkilendirmeler KartYetkilendirme[]
   erisimKayitlari ErisimKaydi[]
   ihlalKayitlari IhlalKaydi[]
+  kullaniciGruplari KullaniciGrup[]
+  yetkiKurallari YetkiKurali[]
+  olaylar Olay[]
+  offlineListeUyelikleri OfflineListeUyesi[]
+  denetimKayitlari DenetimKaydi[]
 
   @@map("kullanici")
 }
@@ -58,7 +158,7 @@ model Kullanici {
 model Kart {
   kartId          BigInt    @id @default(autoincrement())
   kartUid         String    @unique @db.VarChar(29) // MIFARE UID
-  durum           String    @default("aktif") @db.VarChar(16) // 'aktif', 'kayip', 'iptal', 'hasarli'
+  durum           KartDurum @default(aktif)
 
   verilicTarihi   DateTime  @default(now()) @db.Date()
   iptalTarihi     DateTime? @db.Date()
@@ -85,7 +185,7 @@ model KartYetkilendirme {
   birimId         Int?
   birim           Birim?    @relation(fields: [birimId], references: [birimId])
 
-  durum           String    @default("aktif") @db.VarChar(16) // 'aktif', 'pasif', 'iptal'
+  durum           KartYetkilendirmeDurum @default(aktif)
   yetkilendirilmeTarihi DateTime @default(now()) @db.Timestamptz()
   yetkilendiren   BigInt?   // Kim tarafından yetkilendirildi (admin)
   notlar          String?
@@ -104,10 +204,12 @@ model Kapi {
   bina            String?   @db.VarChar(64)
   kat             Int?
   aciklama        String?   @db.VarChar(256)
-  durum           String    @default("aktif") @db.VarChar(16) // 'aktif', 'bakimda', 'devredisi'
+  durum           KapiDurum @default(aktif)
 
   cihazlar        CihazKapiAtama[]
   erisimKayitlari ErisimKaydi[]
+  yetkiKurallari  YetkiKurali[]
+  olaylar         Olay[]
 
   @@map("kapi")
 }
@@ -119,12 +221,15 @@ model Kapi {
 model Cihaz {
   cihazId         Int       @id @default(autoincrement())
   seriNo          String    @unique @db.VarChar(64)
-  durum           String    @default("aktif") @db.VarChar(16) // 'aktif', 'bakimda', 'arizali', 'emekli'
+  durum           CihazDurum @default(aktif)
   kurulumuTarihi DateTime  @default(now()) @db.Date()
 
   kapilari        CihazKapiAtama[]
   cihazDurumlari  CihazDurumu[]
   erisimKayitlari ErisimKaydi[]
+  offlineListeSurumleri OfflineListeSurumu[]
+  senkronCalismalari    SenkronCalismasi[]
+  olaylar               Olay[]
 
   @@map("cihaz")
 }
@@ -156,8 +261,8 @@ model CihazDurumu {
   cihazId         Int
   cihaz           Cihaz     @relation(fields: [cihazId], references: [cihazId])
 
-  kapiDurumu      String    @db.VarChar(16) // 'acik', 'kapali', 'arizali'
-  cihazDurumTip   String    @db.VarChar(16) // 'cevrimici', 'cevimdisi', 'hatali'
+  kapiDurumu      KapiAcikKapaliDurum
+  cihazDurumTip   CihazBaglantiDurumu
   bataryaSeviyesi Int?      // 0-100
   wifiSignali     Int?      // -30 to -90 dBm
   firmwareVersiyon String? @db.VarChar(32)
@@ -191,8 +296,8 @@ model ErisimKaydi {
   kart            Kart?     @relation(fields: [kartId], references: [kartId])
 
   okunanUid       String?   @db.VarChar(29)
-  dogrulamaYontemi String   @db.VarChar(8) // 'kart', 'pin'
-  sonuc           String    @db.VarChar(8) // 'izin', 'red'
+  dogrulamaYontemi DogrulamaYontemi
+  sonuc           ErisimSonucu
   redNedeni       String?   @db.VarChar(32) // 'yetkilendirilmemis', 'iptal', vb.
 
   olayTamani      DateTime  @db.Timestamptz()
@@ -228,8 +333,175 @@ model ArizaBildirimi {
   bildiren    String   @default("Anonim") @db.VarChar(128)
   arizaTuru   String   @db.VarChar(64)
   aciklama    String   @db.VarChar(512)
-  durum       String   @default("OPEN") @db.VarChar(16) // OPEN, IN_PROGRESS, RESOLVED
+  durum       ArizaDurum @default(OPEN)
   olusturulma DateTime @default(now()) @db.Timestamptz()
 
   @@map("ariza_bildirimi")
+}
+
+// ============================================================
+// 12. Grup
+// ============================================================
+
+model Grup {
+  grupId    Int      @id @default(autoincrement())
+  ad        String   @db.VarChar(128)
+  aciklama  String?  @db.VarChar(256)
+  aktif     Boolean  @default(true)
+
+  uyeler         KullaniciGrup[]
+  yetkiKurallari YetkiKurali[]
+
+  @@map("grup")
+}
+
+// ============================================================
+// 13. Kullanıcı - Grup (çoktan çoğa ilişki tablosu)
+// ============================================================
+
+model KullaniciGrup {
+  kullaniciGrupId BigInt   @id @default(autoincrement())
+
+  kullaniciId     BigInt
+  kullanici       Kullanici @relation(fields: [kullaniciId], references: [kullaniciId])
+
+  grupId          Int
+  grup            Grup      @relation(fields: [grupId], references: [grupId])
+
+  eklenmeTarihi   DateTime  @default(now()) @db.Timestamptz()
+
+  @@unique([kullaniciId, grupId])
+  @@map("kullanici_grup")
+}
+
+// ============================================================
+// 14. Yetki Kuralı (gün/saat bazlı erişim yetkisi)
+// ============================================================
+
+model YetkiKurali {
+  yetkiKuraliId   BigInt    @id @default(autoincrement())
+
+  // Kural ya bir gruba ya da doğrudan bir kullanıcıya tanımlanabilir
+  grupId          Int?
+  grup            Grup?     @relation(fields: [grupId], references: [grupId])
+
+  kullaniciId     BigInt?
+  kullanici       Kullanici? @relation(fields: [kullaniciId], references: [kullaniciId])
+
+  kapiId          Int
+  kapi            Kapi      @relation(fields: [kapiId], references: [kapiId])
+
+  gunMaskesi      Int       // bit maskesi: Pzt=1, Sal=2, Çar=4 ... Paz=64
+  saatBaslangic   String    @db.VarChar(5) // "08:00"
+  saatBitis       String    @db.VarChar(5) // "18:00"
+
+  aktif           Boolean   @default(true)
+  olusturmaTamani DateTime  @default(now()) @db.Timestamptz()
+
+  @@map("yetki_kurali")
+}
+
+// ============================================================
+// 15. Olay (sistem genelinde ham olay akışı)
+// ============================================================
+
+model Olay {
+  olayId      BigInt    @id @default(autoincrement())
+
+  tur         String    @db.VarChar(32) // 'giris_basarili', 'giris_red', 'cihaz_offline', 'ariza' vb.
+  kaynak      OlayKaynak
+
+  cihazId     Int?
+  cihaz       Cihaz?    @relation(fields: [cihazId], references: [cihazId])
+
+  kapiId      Int?
+  kapi        Kapi?     @relation(fields: [kapiId], references: [kapiId])
+
+  kullaniciId BigInt?
+  kullanici   Kullanici? @relation(fields: [kullaniciId], references: [kullaniciId])
+
+  detay       Json?
+  olayTamani  DateTime  @default(now()) @db.Timestamptz()
+
+  @@map("olay")
+}
+
+// ============================================================
+// 16. Denetim Kaydı (audit log — kim, neyi, ne zaman değiştirdi)
+// ============================================================
+
+model DenetimKaydi {
+  denetimId           BigInt    @id @default(autoincrement())
+
+  islemYapan          BigInt?
+  islemYapanKullanici Kullanici? @relation(fields: [islemYapan], references: [kullaniciId])
+
+  islemTuru           DenetimIslemTuru
+  tabloAdi            String    @db.VarChar(64)
+  kayitId             String?   @db.VarChar(64)
+
+  eskiDeger           Json?
+  yeniDeger           Json?
+
+  islemTamani         DateTime  @default(now()) @db.Timestamptz()
+
+  @@map("denetim_kaydi")
+}
+
+// ============================================================
+// 17. Offline Liste Sürümü (cihaza push edilen liste versiyonu)
+// ============================================================
+
+model OfflineListeSurumu {
+  surumId         BigInt    @id @default(autoincrement())
+
+  cihazId         Int
+  cihaz           Cihaz     @relation(fields: [cihazId], references: [cihazId])
+
+  olusturmaTamani DateTime  @default(now()) @db.Timestamptz()
+  gecerlilikBitis DateTime  @db.Timestamptz()
+
+  uyeler          OfflineListeUyesi[]
+
+  @@map("offline_liste_surumu")
+}
+
+// ============================================================
+// 18. Offline Liste Üyesi (bir sürüme dahil edilen kullanıcı bilgisi)
+// ============================================================
+
+model OfflineListeUyesi {
+  uyeId         BigInt    @id @default(autoincrement())
+
+  surumId       BigInt
+  surum         OfflineListeSurumu @relation(fields: [surumId], references: [surumId])
+
+  kullaniciId   BigInt
+  kullanici     Kullanici @relation(fields: [kullaniciId], references: [kullaniciId])
+
+  kartUid       String?   @db.VarChar(29)
+  pinHmac       String?   @db.VarChar(64) // HMAC-SHA256, cihaza özel anahtarla üretilir
+  gunMaskesi    Int?
+  saatBaslangic String?   @db.VarChar(5)
+  saatBitis     String?   @db.VarChar(5)
+
+  @@map("offline_liste_uyesi")
+}
+
+// ============================================================
+// 19. Senkronizasyon Çalışması (cihaz <-> sunucu senkron geçmişi)
+// ============================================================
+
+model SenkronCalismasi {
+  senkronId       BigInt    @id @default(autoincrement())
+
+  cihazId         Int
+  cihaz           Cihaz     @relation(fields: [cihazId], references: [cihazId])
+
+  durum           SenkronDurum
+  baslangicTamani DateTime  @default(now()) @db.Timestamptz()
+  bitisTamani     DateTime? @db.Timestamptz()
+  hataMesaji      String?
+
+  @@map("senkron_calismasi")
 }

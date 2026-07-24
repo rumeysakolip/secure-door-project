@@ -21,6 +21,7 @@ const cihazKapiAtamaRotalari = require('./routes/cihazKapiAtama');
 const cihazDurumuRotalari = require('./routes/cihazDurumlari');
 const erisimKaydiRotalari = require('./routes/erisimKayitlari');
 const ihlalKaydiRotalari = require('./routes/ihlalKayitlari');
+const grupRotalari = require('./routes/gruplar');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,6 +41,7 @@ app.use('/api/cihaz-kapi-atamalar', cihazKapiAtamaRotalari);
 app.use('/api/cihaz-durumlari', cihazDurumuRotalari);
 app.use('/api/erisim-kayitlari', erisimKaydiRotalari);
 app.use('/api/ihlal-kayitlari', ihlalKaydiRotalari);
+app.use('/api/gruplar', grupRotalari);
 
 app.get('/', (req, res) => {
     res.json({ message: 'Backend, Prisma ORM ve PostgreSQL veritabanı ile aktif olarak çalışıyor!' });
