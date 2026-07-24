@@ -51,6 +51,7 @@ services:
 
     volumes:
       - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
 
     networks:
       - kapi-network

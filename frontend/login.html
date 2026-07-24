@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Giriş Yap | Lab Erişim Sistemi</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      background-color: var(--navy-dark, #0b1329);
+    }
+    .login-card {
+      width: 100%;
+      max-width: 400px;
+      padding: 30px;
+      background: #121c3b;
+      border: 1px solid var(--steel-blue, #2a3d66);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+      box-sizing: border-box;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      color: var(--text-muted, #94a3b8);
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+    }
+    .form-control {
+      width: 100%;
+      padding: 12px;
+      background: #0b1329;
+      border: 1px solid var(--steel-blue, #2a3d66);
+      border-radius: 8px;
+      color: white;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: #4a90e2;
+    }
+    .forgot-pass {
+      text-align: right;
+      margin-top: -10px;
+      margin-bottom: 20px;
+    }
+    .forgot-pass a {
+      color: #4a90e2;
+      font-size: 0.85rem;
+      text-decoration: none;
+    }
+    .forgot-pass a:hover {
+      text-decoration: underline;
+    }
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      background: #38bdf8;
+      color: #0b1329;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-login:hover {
+      background: #0ea5e9;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-card">
+    <div style="text-align: center; margin-bottom: 25px;">
+      <h2 style="color: white; margin: 0 0 8px 0;">Lab Erişim Paneli</h2>
+      <p style="color: var(--text-muted, #94a3b8); font-size: 0.85rem; margin: 0;">Yönetim paneline erişmek için giriş yapın</p>
+    </div>
+
+    <form onsubmit="alert('Giriş başarılı!'); window.location.href='index.html'; return false;">
+      <div class="form-group">
+        <label>Kullanıcı Adı / E-posta</label>
+        <input type="text" class="form-control" placeholder="Örn: admin" required>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 10px;">
+        <label>Şifre</label>
+        <input type="password" class="form-control" placeholder="••••••••" required>
+      </div>
+
+      <!-- ŞİFREMİ UNUTTUM BAĞLANTISI -->
+      <div class="forgot-pass">
+        <a href="#" onclick="forgotPassword(); return false;">Şifremi Unuttum?</a>
+      </div>
+
+      <button type="submit" class="btn-login">Giriş Yap</button>
+    </form>
+  </div>
+
+  <script>
+    // Şifremi Unuttum İşlevi (Mail Gönderme Simülasyonu)
+    function forgotPassword() {
+      const email = prompt("Lütfen sisteme kayıtlı e-posta adresinizi girin (@subu.edu.tr):");
+      if (email) {
+        if (email.trim() !== "") {
+          alert("Şifre sıfırlama talimatları ve geçici şifreniz " + email + " adresine başarıyla gönderildi!");
+        } else {
+          alert("Geçerli bir e-posta adresi girmelisiniz.");
+        }
+      }
+    }
+  </script>
+
+</body>
+</html>

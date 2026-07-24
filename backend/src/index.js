@@ -1,14 +1,52 @@
 const express = require('express');
+const cors = require('cors');
+
+// Prisma şemasındaki BigInt alanlar (kullaniciId, kartId, kayitId vb.)
+// JSON.stringify tarafından doğrudan serileştirilemiyor ("Do not know how
+// to serialize a BigInt" hatası). res.json() bu fonksiyonu kullandığı için
+// tüm uygulama genelinde BigInt'leri string'e çevirecek tek bir dönüşüm
+// tanımlıyoruz; böylece her route'ta ayrı ayrı çevirme yapmaya gerek kalmıyor.
+BigInt.prototype.toJSON = function () {
+    return this.toString();
+};
+
+// Rotaları içe aktarma
+const birimRotalari = require('./routes/birimler');
+const kullaniciRotalari = require('./routes/kullanicilar');
+const kartRotalari = require('./routes/kartlar');
+const kartYetkilendirmeRotalari = require('./routes/kartYetkilendirmeler');
+const kapiRotalari = require('./routes/kapilar');
+const cihazRotalari = require('./routes/cihazlar');
+const cihazKapiAtamaRotalari = require('./routes/cihazKapiAtama');
+const cihazDurumuRotalari = require('./routes/cihazDurumlari');
+const erisimKaydiRotalari = require('./routes/erisimKayitlari');
+const ihlalKaydiRotalari = require('./routes/ihlalKayitlari');
+const grupRotalari = require('./routes/gruplar');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware'ler
 app.use(express.json());
+app.use(cors());
+
+// Endpoint Bağlantıları
+app.use('/api/birimler', birimRotalari);
+app.use('/api/kullanicilar', kullaniciRotalari);
+app.use('/api/kartlar', kartRotalari);
+app.use('/api/kart-yetkilendirmeler', kartYetkilendirmeRotalari);
+app.use('/api/kapilar', kapiRotalari);
+app.use('/api/cihazlar', cihazRotalari);
+app.use('/api/cihaz-kapi-atamalar', cihazKapiAtamaRotalari);
+app.use('/api/cihaz-durumlari', cihazDurumuRotalari);
+app.use('/api/erisim-kayitlari', erisimKaydiRotalari);
+app.use('/api/ihlal-kayitlari', ihlalKaydiRotalari);
+app.use('/api/gruplar', grupRotalari);
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Backend çalışıyor!' });
+    res.json({ message: 'Backend, Prisma ORM ve PostgreSQL veritabanı ile aktif olarak çalışıyor!' });
 });
 
 app.listen(PORT, () => {
-  console.log(`Backend ${PORT} portunda başlatıldı`);
+    console.log(`Backend sunucusu ${PORT} portunda başlatıldı.`);
 });

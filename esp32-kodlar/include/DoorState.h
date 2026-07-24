@@ -7,7 +7,6 @@ enum class Durum {
     BEKLEMEDE,      // Kart/Şifre bekleniyor, kapı kilitli
     OKUNUYOR,       // Veri alındı, doğrulama bekleniyor
     ONAYLANDI,      // GİRİŞ İZNİ verildi, kilit açık
-    CIKIS_YAPILDI,  // ÇIKIŞ İŞLEMİ yapıldı, KİLİT AÇILMAZ
     REDDEDILDI,     // Geçiş/İşlem izni yok
     ALARM           // Zorla açılma veya uzun süre açık kalma
 };

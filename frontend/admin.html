@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Ana Sayfa | Kontrol Paneli</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .container { padding: 30px; max-width: 1200px; margin: 0 auto; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--steel-blue); }
+    th { color: var(--text-muted); }
+    .filter-row { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+    .filter-row input { margin: 0; width: 200px; }
+  </style>
+</head>
+<body>
+
+  <!-- Ortak Menü -->
+  <nav class="navbar">
+    <div class="logo">Lab Erişim Paneli  </div>
+    <div class="nav-links">
+      <a href="admin.html" style="color: var(--steel-light);">Ana Sayfa</a>
+      <a href="gecici-sifre.html">🔑 Geçici Şifre Al</a>
+      <a href="gecmis-girisler.html">📜 Giriş Geçmişi</a>
+      <a href="yetkilendirme.html">👥 Yetkilendirme</a>
+      <a href="ariza-gecmisi.html">🛠️ Arıza Geçmişi</a>
+      <a href="login.html" style="color: var(--status-red);">Çıkış Yap</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2>Sistem Genel Durumu</h2>
+
+    <!-- TEK KAPI CANLI DURUMU -->
+    <div class="card-box" style="margin-bottom: 30px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 style="margin: 0;">🚪 Laboratuvar Kapısı</h3>
+        <span class="badge badge-success">SİSTEM ONLİNE</span>
+      </div>
+      <hr style="border-color: var(--steel-blue); margin: 15px 0;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+        <span>Kapı Kilit Durumu:</span>
+        <strong style="color: var(--status-green);">Kilitli (Güvenli)</strong>
+      </div>
+      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+        <span>Fiziksel RFID Okuyucu:</span>
+        <span style="color: var(--status-green);">● Bağlı</span>
+      </div>
+      <div style="display: flex; justify-content: space-between;">
+        <span>Son Giriş Denemesi:</span>
+        <span style="color: var(--text-muted);">14:32 (Başarılı)</span>
+      </div>
+    </div>
+
+    <!-- SON KAPI GEÇİŞ KAYITLARI & TARİH FİLTRESİ -->
+    <div class="card-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h3 style="margin: 0;">📜 Son Kapı Giriş Kayıtları</h3>
+        <a href="gecmis-girisler.html" style="color: var(--steel-light); text-decoration: none; font-size: 0.9rem; font-weight: bold;">
+          Tüm Geçmiş Girişler Sayfası →
+        </a>
+      </div>
+
+      <!-- SADECE TARİH FİLTRESİ -->
+      <div class="filter-row">
+        <label style="color: var(--text-muted); font-weight: bold;">Tarihe Göre Filtrele:</label>
+        <input type="date" class="form-control">
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Saat</th>
+            <th>Kullanıcı</th>
+            <th>Rol</th>
+            <th>Giriş Yöntemi</th>
+            <th>Durum</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>14:32</td>
+            <td>Dr. Ahmet Yılmaz</td>
+            <td>Hoca</td>
+            <td>🔑 Günlük Şifre</td>
+            <td><span class="badge badge-success">Başarılı</span></td>
+          </tr>
+          <tr>
+            <td>14:28</td>
+            <td>Mehmet Can</td>
+            <td>Öğrenci</td>
+            <td>💳 Kart</td>
+            <td><span class="badge badge-success">Başarılı</span></td>
+          </tr>
+          <tr>
+            <td>14:10</td>
+            <td>Bilinmeyen</td>
+            <td>-</td>
+            <td>🔑 Günlük Şifre</td>
+            <td><span class="badge badge-danger">Hatalı Şifre</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</body>
+</html>

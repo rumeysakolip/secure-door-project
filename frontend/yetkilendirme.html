@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Kullanıcı Yetkilendirme | Okul Erişim Kontrolü</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .container { max-width: 1100px; margin: 30px auto; padding: 20px; }
+    
+    /* Düzgün hizalama için Grid Düzeni */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 2fr 1.5fr 2fr 1fr;
+      gap: 15px;
+      align-items: end;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px;
+      background: var(--navy-dark);
+      border: 1px solid var(--steel-blue);
+      color: white;
+      border-radius: 6px;
+      box-sizing: border-box;
+      font-size: 0.9rem;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--steel-light);
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--steel-blue); vertical-align: middle; }
+    th { color: var(--text-muted); font-size: 0.85rem; }
+    
+    .switch-btn {
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .btn-active { background: var(--status-green); color: white; }
+    .btn-passive { background: var(--status-red); color: white; }
+
+    .btn-icon {
+      background: var(--navy-dark);
+      border: 1px solid var(--steel-blue);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.8rem;
+    }
+    .btn-icon:hover { border-color: var(--steel-light); }
+
+    .pass-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Ortak Menü -->
+  <nav class="navbar">
+    <div class="logo">Lab Erişim Paneli</div>
+    <div class="nav-links">
+      <a href="index.html">Ana Sayfa</a>
+      <a href="gecici-sifre.html">🔑 Geçici Şifre Al</a>
+      <a href="gecmis-girisler.html">📜 Giriş Geçmişi</a>
+      <a href="yetkilendirme.html" style="color: var(--steel-light);">👥 Yetkilendirme</a>
+      <a href="ariza-gecmisi.html">🛠️ Arıza Geçmişi</a>
+      <a href="login.html" style="color: var(--status-red);">Çıkış Yap</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2>👥 Kapı Yetkilendirme ve Kart Yönetimi</h2>
+
+    <!-- HİZALANMIŞ YENİ KULLANICI EKLEME FORMU -->
+    <!-- HİZALANMIŞ YENİ KULLANICI EKLEME FORMU -->
+    <div class="card-box" style="margin-bottom: 25px;">
+      <h3 style="margin-top: 0; margin-bottom: 15px; color: var(--steel-light);">➕ Yeni Kart Yetkilendir / Ekle</h3>
+      
+      <form onsubmit="alert('Kullanıcı sisteme başarıyla eklendi!'); return false;" class="form-grid">
+        <div class="form-group">
+          <label>Ad Soyad</label>
+          <input type="text" class="form-control" placeholder="Örn: Dr. Ahmet Yılmaz" required>
+        </div>
+
+        <div class="form-group">
+          <label>Rol</label>
+          <select class="form-control">
+            <option value="Ogrenci">Öğrenci</option>
+            <option value="Hoca">Hoca / Akademisyen</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>RFID Kart UID (Okuyucudan Çekilir)</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="rfidInput" class="form-control" placeholder="Kart bekleniyor..." readonly required style="background: rgba(255,255,255,0.03); cursor: not-allowed;">
+            <button type="button" class="btn-icon" onclick="fetchCardId()" title="Sunucudan Son Okutulan Kartı Al" style="padding: 0 12px; height: 39px; white-space: nowrap;">🔄 Çek</button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn" style="height: 39px; background: var(--steel-light); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">
+          Yetki Tanımla
+        </button>
+      </form>
+    </div>
+      </form>
+    </div>
+
+    <!-- MEVCUT KULLANICI LİSTESİ -->
+    <div class="card-box">
+      <h3 style="margin-top: 0;">📋 Tanımlı Kullanıcılar</h3>
+      
+      <table>
+        <thead>
+          <tr>
+            <th>Kullanıcı Adı</th>
+            <th>Rol</th>
+            <th>RFID Kart UID</th>
+            <th>Özel Hoca Şifresi</th>
+            <th>Erişim Yetkisi</th>
+            <th>İşlem</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- HOCA SATIRI -->
+          <tr>
+            <td>Dr. Ahmet Yılmaz</td>
+            <td><span class="badge" style="background: rgba(74, 144, 226, 0.2); color: #4A90E2;">Hoca</span></td>
+            <td>💳 <code>B2:11:4F:88</code></td>
+            <td>
+              <div class="pass-container">
+                <span id="pass1">••••••</span>
+                <button class="btn-icon" onclick="togglePass('pass1', '749201')">👁️ Göster</button>
+              </div>
+            </td>
+            <td><span class="badge badge-success">Yetkili</span></td>
+            <td>
+              <button class="switch-btn btn-passive" onclick="toggleAuth(this)">Yetkiyi Kaldır</button>
+            </td>
+          </tr>
+
+          <!-- ÖĞRENCİ SATIRI 1 -->
+          <tr>
+            <td>Mehmet Can</td>
+            <td><span class="badge" style="background: rgba(255, 255, 255, 0.1); color: #aaa;">Öğrenci</span></td>
+            <td>💳 <code>E4:A9:12:05</code></td>
+            <td><span style="color: var(--text-muted); font-size: 0.85rem;">Yok (Sadece Kart)</span></td>
+            <td><span class="badge badge-success">Yetkili</span></td>
+            <td>
+              <button class="switch-btn btn-passive" onclick="toggleAuth(this)">Yetkiyi Kaldır</button>
+            </td>
+          </tr>
+
+          <!-- ÖĞRENCİ SATIRI 2 -->
+          <tr>
+            <td>Ali Demir</td>
+            <td><span class="badge" style="background: rgba(255, 255, 255, 0.1); color: #aaa;">Öğrenci</span></td>
+            <td>💳 <code>11:22:33:44</code></td>
+            <td><span style="color: var(--text-muted); font-size: 0.85rem;">Yok (Sadece Kart)</span></td>
+            <td><span class="badge badge-danger">Engelli</span></td>
+            <td>
+              <button class="switch-btn btn-active" onclick="toggleAuth(this)">Yetki Ver</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <script>
+    // Tek tıkla yetki durumunu değiştirme
+    function toggleAuth(btn) {
+      const row = btn.closest('tr');
+      const badgeCell = row.cells[4];
+
+      if (btn.classList.contains('btn-passive')) {
+        badgeCell.innerHTML = '<span class="badge badge-danger">Engelli</span>';
+        btn.textContent = 'Yetki Ver';
+        btn.className = 'switch-btn btn-active';
+      } else {
+        badgeCell.innerHTML = '<span class="badge badge-success">Yetkili</span>';
+        btn.textContent = 'Yetkiyi Kaldır';
+        btn.className = 'switch-btn btn-passive';
+      }
+    }
+
+    // Hoca Şifresini Göster / Gizle
+    function togglePass(id, realPass) {
+      const el = document.getElementById(id);
+      if (el.textContent === '••••••') {
+        el.textContent = realPass;
+      } else {
+        el.textContent = '••••••';
+      }
+    }
+  </script>
+
+</body>
+</html>

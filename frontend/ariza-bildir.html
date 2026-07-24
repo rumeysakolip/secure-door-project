@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arıza Bildir | QR Mobil</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .mobile-card { max-width: 450px; margin: 30px auto; padding: 20px; }
+    
+    .form-group {
+      margin-bottom: 18px;
+    }
+    
+    .form-group label.form-label {
+      display: block;
+      color: var(--text-main);
+      font-weight: 500;
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 10px 12px;
+      background: var(--navy-dark);
+      border: 1px solid var(--steel-blue);
+      border-radius: 8px;
+      color: white;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--steel-light);
+    }
+
+    /* E-POSTA KUTUSU VE YAZI BOYUTU BÜYÜTÜLDÜ */
+    .email-input-group {
+      display: flex;
+      align-items: center;
+      background: var(--navy-dark);
+      border: 1px solid var(--steel-blue);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .email-input-group input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 12px 14px;
+      color: white;
+      font-size: 1.1rem; /* Yazı boyutu büyütüldü */
+    }
+
+    .email-input-group input:focus {
+      outline: none;
+    }
+
+    .email-domain {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      padding: 12px 14px;
+      font-size: 1.05rem; /* Sabit uzantı boyutu büyütüldü */
+      border-left: 1px solid var(--steel-blue);
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    /* KUTU DÜZENİ */
+    .file-input-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--navy-dark);
+      border: 1px solid var(--steel-blue);
+      border-radius: 8px;
+      padding: 6px 10px 6px 15px;
+    }
+
+    .file-text {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      flex: 1;
+      padding: 6px 0;
+    }
+
+    .camera-btn {
+      background: var(--steel-blue);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+      margin-left: 10px;
+    }
+
+    .camera-btn:hover {
+      background: var(--steel-light);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mobile-card">
+    <div class="card-box">
+      <h3 style="color: var(--status-amber); margin-top: 0;">🛠️ Sistem Arıza Bildirimi</h3>
+      <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 20px;">
+        Lütfen yaşadığınız arıza veya donanım hasarını bilgilerinizi girerek bize bildirin.
+      </p>
+
+      <form onsubmit="alert('Arıza bildiriminiz sisteme iletildi. Teşekkürler!'); window.location.href='index.html'; return false;">
+        
+        <!-- İSİM SOYAD -->
+        <div class="form-group">
+          <label class="form-label">Ad Soyad</label>
+          <input type="text" class="form-control" placeholder="Örn: Ahmet Yılmaz" required>
+        </div>
+
+        <!-- E-POSTA (DAHA BÜYÜK YAZI) -->
+        <div class="form-group">
+          <label class="form-label">E-posta Adresi</label>
+          <div class="email-input-group">
+            <input type="text" placeholder="kullanici.adi" required>
+            <span class="email-domain">@subu.edu.tr</span>
+          </div>
+        </div>
+
+        <!-- FOTOĞRAF / KAMERA -->
+        <div class="form-group">
+          <label class="form-label">Arıza Fotoğrafı Yükle / Çek</label>
+          
+          <input type="file" id="filePicker" accept="image/*" style="display: none;" onchange="updateFileName(this)">
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;" onchange="updateFileName(this)">
+          
+          <div class="file-input-box">
+            <label for="filePicker" class="file-text" id="fileNameText">Dosya Seç</label>
+            <label for="cameraInput" class="camera-btn" title="Kamerayı Aç">📸</label>
+          </div>
+        </div>
+
+        <!-- AÇIKLAMA -->
+        <div class="form-group">
+          <label class="form-label">Açıklama</label>
+          <textarea class="form-control" rows="3" placeholder="Örn: Kilit dili sıkışmış, okuyucu camı kırık..." required></textarea>
+        </div>
+
+        <button type="submit" class="btn-primary" style="background: var(--status-amber); width: 100%; padding: 12px; border: none; border-radius: 8px; color: white; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 10px;">
+          Gönder
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function updateFileName(input) {
+      const labelText = document.getElementById('fileNameText');
+      if (input.files && input.files.length > 0) {
+        labelText.textContent = input.files[0].name;
+        labelText.style.color = "var(--steel-light)";
+      }
+    }
+  </script>
+
+</body>
+</html>
