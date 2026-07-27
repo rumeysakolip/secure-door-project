@@ -2,153 +2,59 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Giriş Yap | Lab Erişim Sistemi</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    body {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      margin: 0;
-      background-color: var(--navy-dark, #0b1329);
-    }
-    .login-card {
-      width: 100%;
-      max-width: 400px;
-      padding: 30px;
-      background: #121c3b;
-      border: 1px solid var(--steel-blue, #2a3d66);
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
-      box-sizing: border-box;
-    }
-    .form-group {
-      margin-bottom: 20px;
-    }
-    .form-group label {
-      display: block;
-      color: var(--text-muted, #94a3b8);
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-    }
-    .form-control {
-      width: 100%;
-      padding: 12px;
-      background: #0b1329;
-      border: 1px solid var(--steel-blue, #2a3d66);
-      border-radius: 8px;
-      color: white;
-      font-size: 0.95rem;
-      box-sizing: border-box;
-    }
-    .form-control:focus {
-      outline: none;
-      border-color: #4a90e2;
-    }
-    .forgot-pass {
-      text-align: right;
-      margin-top: -10px;
-      margin-bottom: 20px;
-    }
-    .forgot-pass a {
-      color: #4a90e2;
-      font-size: 0.85rem;
-      text-decoration: none;
-    }
-    .forgot-pass a:hover {
-      text-decoration: underline;
-    }
-    .btn-login {
-      width: 100%;
-      padding: 12px;
-      background: #38bdf8;
-      color: #0b1329;
-      border: none;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 1rem;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .btn-login:hover {
-      background: #0ea5e9;
-      color: white;
-    }
-  </style>
 </head>
 <body>
+  <main class="login-page">
+    <section class="login-showcase" aria-labelledby="login-hero-title">
+      <div class="login-brand">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+        <div><strong>SecureLab</strong><span>Erişim Yönetim Platformu</span></div>
+      </div>
 
-  <div class="login-card">
-    <div style="text-align: center; margin-bottom: 25px;">
-      <h2 style="color: white; margin: 0 0 8px 0;">Lab Erişim Paneli</h2>
-      <p style="color: var(--text-muted, #94a3b8); font-size: 0.85rem; margin: 0;">Yönetim paneline erişmek için giriş yapın</p>
-    </div>
+      <div class="login-hero">
+        <div class="security-orbit" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3M12 13v3"/></svg></div>
+        <h1 id="login-hero-title">Laboratuvar erişimi, güvenle yönetilir.</h1>
+        <p>Kart, PIN ve kapı altyapısını tek merkezden izleyen kurumsal erişim kontrol platformu.</p>
+        <div class="login-features">
+          <span class="login-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m5 12 4 4L19 6"/></svg>Güvenli doğrulama</span>
+          <span class="login-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18M7 16l4-4 3 3 5-7"/></svg>Canlı sistem görünümü</span>
+          <span class="login-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>Merkezi erişim kontrolü</span>
+        </div>
+      </div>
 
-    <!-- FORM ETİKETİNE id="loginForm" EKLENDİ, sahte onsubmit KALDIRILDI -->
-    <form id="loginForm">
+      <div class="login-showcase-footer">SecureLab güvenli erişim altyapısı</div>
+    </section>
+
+    <section class="login-form-panel">
+      <div class="login-card">
+        <div class="login-card-header">
+          <div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>Yetkili kullanıcı girişi</div>
+          <h2>Tekrar hoş geldiniz</h2>
+          <p>Yönetim paneline erişmek için kimlik bilgilerinizi girin.</p>
+        </div>
+
+    <form onsubmit="alert('Giriş başarılı!'); window.location.href='index.html'; return false;">
       <div class="form-group">
         <label>Kullanıcı Adı / E-posta</label>
-        <!-- id="eposta" EKLENDİ -->
-        <input type="text" id="eposta" class="form-control" placeholder="Örn: ahmet@subu.edu.tr" required>
+        <input type="text" class="form-control" placeholder="Örn: admin" required>
       </div>
 
       <div class="form-group" style="margin-bottom: 10px;">
-        <label>Şifre / PIN</label>
-        <!-- id="pin" EKLENDİ -->
-        <input type="password" id="pin" class="form-control" placeholder="••••••••" required>
+        <label>Şifre</label>
+        <input type="password" class="form-control" placeholder="••••••••" required>
       </div>
 
-      <!-- HATALI GİRİŞTE MESAJ GÖSTERİLECEK ALAN EKLENDİ -->
-      <div id="errorMessage" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 10px; display: none;"></div>
-
-      <!-- ŞİFREMİ UNUTTUM BAĞLANTISI -->
-      <div class="forgot-pass">
-        <a href="#" onclick="forgotPassword(); return false;">Şifremi Unuttum?</a>
+        <div class="login-security"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg>Güvenli oturum bağlantısı</div>
       </div>
-
-      <button type="submit" class="btn-login">Giriş Yap</button>
-    </form>
-  </div>
+    </section>
+  </main>
 
   <!-- YENİ SCRIPT KODU -->
   <script>
-    document.getElementById('loginForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      
-      const eposta = document.getElementById('eposta').value;
-      const pin = document.getElementById('pin').value;
-      const errorDiv = document.getElementById('errorMessage');
-
-      errorDiv.style.display = 'none';
-
-      try {
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eposta, pin })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          // Giriş başarılıysa JWT Token ve Kullanıcı bilgisini sakla
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user));
-          
-          // Ana sayfaya yönlendir
-          window.location.href = 'index.html';
-        } else {
-          // Sunucudan gelen hata mesajını göster (örn: Hatalı PIN)
-          errorDiv.textContent = data.message || 'Giriş başarısız.';
-          errorDiv.style.display = 'block';
-        }
-      } catch (err) {
-        errorDiv.textContent = 'Sunucuyla bağlantı kurulamadı.';
-        errorDiv.style.display = 'block';
-      }
-    });
-
+    // Şifremi Unuttum İşlevi (Mail Gönderme Simülasyonu)
     function forgotPassword() {
       const email = prompt("Lütfen sisteme kayıtlı e-posta adresinizi girin (@subu.edu.tr):");
       if (email && email.trim() !== "") {
@@ -156,6 +62,5 @@
       }
     }
   </script>
-
 </body>
 </html>
