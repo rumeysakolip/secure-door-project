@@ -2,107 +2,73 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ana Sayfa | Kontrol Paneli</title>
   <link rel="stylesheet" href="style.css">
-  <style>
-    .container { padding: 30px; max-width: 1200px; margin: 0 auto; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { text-align: left; padding: 12px; border-bottom: 1px solid var(--steel-blue); }
-    th { color: var(--text-muted); }
-    .filter-row { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
-    .filter-row input { margin: 0; width: 200px; }
-  </style>
+  <script src="script.js" defer></script>
 </head>
 <body>
-
-  <!-- Ortak Menü -->
-  <nav class="navbar">
-    <div class="logo">Lab Erişim Paneli  </div>
-    <div class="nav-links">
-      <a href="admin.html" style="color: var(--steel-light);">Ana Sayfa</a>
-      <a href="gecici-sifre.html">🔑 Geçici Şifre Al</a>
-      <a href="gecmis-girisler.html">📜 Giriş Geçmişi</a>
-      <a href="yetkilendirme.html">👥 Yetkilendirme</a>
-      <a href="ariza-gecmisi.html">🛠️ Arıza Geçmişi</a>
-      <a href="login.html" style="color: var(--status-red);">Çıkış Yap</a>
-    </div>
-  </nav>
-
-  <div class="container">
-    <h2>Sistem Genel Durumu</h2>
-
-    <!-- TEK KAPI CANLI DURUMU -->
-    <div class="card-box" style="margin-bottom: 30px;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 style="margin: 0;">🚪 Laboratuvar Kapısı</h3>
-        <span class="badge badge-success">SİSTEM ONLİNE</span>
+  <div class="app-shell">
+    <nav class="navbar" id="main-navigation" aria-label="Ana navigasyon">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+        <div class="brand-copy"><div class="logo">SecureLab</div><small>Erişim Yönetim Platformu</small></div>
       </div>
-      <hr style="border-color: var(--steel-blue); margin: 15px 0;">
-      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-        <span>Kapı Kilit Durumu:</span>
-        <strong style="color: var(--status-green);">Kilitli (Güvenli)</strong>
+      <div class="nav-section-label">Yönetim</div>
+      <div class="nav-links">
+        <a class="active" href="admin.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span>Ana Sayfa</span></a>
+        <a href="gecici-sifre.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m12 11 8-8M15 6l3 3M17 4l3 3"/></svg><span>Geçici Şifre</span></a>
+        <a href="gecmis-girisler.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><span>Giriş Geçmişi</span></a>
+        <a href="yetkilendirme.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg><span>Yetkilendirme</span></a>
+        <a href="ariza-gecmisi.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3M14 16l6-6 2 2-6 6"/></svg><span>Arıza Geçmişi</span></a>
+        <a class="logout-link" href="login.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span>Çıkış Yap</span></a>
       </div>
-      <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-        <span>Fiziksel RFID Okuyucu:</span>
-        <span style="color: var(--status-green);">● Bağlı</span>
-      </div>
-      <div style="display: flex; justify-content: space-between;">
-        <span>Son Giriş Denemesi:</span>
-        <span style="color: var(--text-muted);">14:32 (Başarılı)</span>
-      </div>
-    </div>
+      <div class="sidebar-meta"><div class="sidebar-meta-row"><span class="sidebar-avatar">AD</span><div><strong>Yönetici Oturumu</strong><small>Tam erişim</small></div></div></div>
+    </nav>
+    <div class="menu-backdrop" aria-hidden="true"></div>
 
-    <!-- SON KAPI GEÇİŞ KAYITLARI & TARİH FİLTRESİ -->
-    <div class="card-box">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <h3 style="margin: 0;">📜 Son Kapı Giriş Kayıtları</h3>
-        <a href="gecmis-girisler.html" style="color: var(--steel-light); text-decoration: none; font-size: 0.9rem; font-weight: bold;">
-          Tüm Geçmiş Girişler Sayfası →
-        </a>
-      </div>
+    <main class="main-panel">
+      <header class="topbar">
+        <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="main-navigation" aria-label="Menüyü aç"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div class="topbar-context"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 21h18M6 21V7l6-4 6 4v14M9 10h.01M15 10h.01"/></svg><span>Yönetici Merkezi / Sistem Kontrolü</span></div>
+        <span class="system-pill">Sistem çevrimiçi</span>
+      </header>
 
-      <!-- SADECE TARİH FİLTRESİ -->
-      <div class="filter-row">
-        <label style="color: var(--text-muted); font-weight: bold;">Tarihe Göre Filtrele:</label>
-        <input type="date" class="form-control">
-      </div>
+      <div class="container">
+        <section class="page-header">
+          <div><div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18M3 12h18"/></svg>Yönetici görünümü</div><h1>Operasyon Merkezi</h1><p class="page-subtitle">Kapı altyapısının sağlık durumunu ve son erişim hareketlerini yönetin.</p></div>
+          <div class="header-actions"><a class="btn-secondary" href="yetkilendirme.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Yetkilendirme</a></div>
+        </section>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Saat</th>
-            <th>Kullanıcı</th>
-            <th>Rol</th>
-            <th>Giriş Yöntemi</th>
-            <th>Durum</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>14:32</td>
-            <td>Dr. Ahmet Yılmaz</td>
-            <td>Hoca</td>
-            <td>🔑 Günlük Şifre</td>
-            <td><span class="badge badge-success">Başarılı</span></td>
-          </tr>
-          <tr>
-            <td>14:28</td>
-            <td>Mehmet Can</td>
-            <td>Öğrenci</td>
-            <td>💳 Kart</td>
-            <td><span class="badge badge-success">Başarılı</span></td>
-          </tr>
-          <tr>
-            <td>14:10</td>
-            <td>Bilinmeyen</td>
-            <td>-</td>
-            <td>🔑 Günlük Şifre</td>
-            <td><span class="badge badge-danger">Hatalı Şifre</span></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+        <section class="metrics-grid">
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 12h.01M15 12h.01M9 17h6"/></svg></span><span class="badge badge-success">Güvenli</span></div><div class="metric-label">Kapı Kilidi</div><div class="metric-value">Kilitli</div><div class="metric-detail">Fiziksel erişim koruma altında</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="6" rx="2"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h8"/></svg></span><span class="badge badge-success">Bağlı</span></div><div class="metric-label">RFID Okuyucu</div><div class="metric-value">Aktif</div><div class="metric-detail">Donanım bağlantısı sağlıklı</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></span><span class="badge badge-info">14:32</span></div><div class="metric-label">Son Erişim</div><div class="metric-value">Başarılı</div><div class="metric-detail">Günlük şifre ile doğrulandı</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0ZM12 9v4M12 17h.01"/></svg></span><span class="badge badge-warning">Takipte</span></div><div class="metric-label">Teknik Durum</div><div class="metric-value">1 Bildirim</div><div class="metric-detail">Açık arıza kaydı bulunuyor</div></article>
+        </section>
+
+        <section class="grid-2">
+          <article class="card-box">
+            <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 12h.01M15 12h.01M9 17h6"/></svg></span><div><h3>Laboratuvar Kapısı</h3><small>Canlı altyapı kontrolü</small></div></div><span class="badge badge-success">Sistem çevrimiçi</span></div>
+            <div class="card-body"><div class="status-list"><div class="status-row"><span class="status-label">Kapı kilit durumu</span><strong class="status-value success">Kilitli (Güvenli)</strong></div><div class="status-row"><span class="status-label">Fiziksel RFID okuyucu</span><strong class="status-value success">Bağlı</strong></div><div class="status-row"><span class="status-label">Son giriş denemesi</span><strong class="status-value">14:32 (Başarılı)</strong></div></div></div>
+          </article>
+          <article class="card-box">
+            <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a10 10 0 1 0 10 10M12 6v6l4 2"/></svg></span><div><h3>Hızlı İşlemler</h3><small>Sık kullanılan yönetim bağlantıları</small></div></div></div>
+            <div class="card-body"><div class="activity-list"><a class="activity-item" href="yetkilendirme.html" style="text-decoration:none"><span class="activity-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span><div class="activity-content"><strong>Kart yetkilendirme</strong><p>Tanımlı kullanıcı ve kart yetkilerini yönetin.</p></div><span class="activity-time">Aç</span></a><a class="activity-item" href="ariza-gecmisi.html" style="text-decoration:none"><span class="activity-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3"/></svg></span><div class="activity-content"><strong>Arıza kayıtları</strong><p>Açık ve çözülen teknik bildirimleri inceleyin.</p></div><span class="activity-time">Aç</span></a></div></div>
+          </article>
+        </section>
+
+        <section class="card-box">
+          <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span><div><h3>Son Kapı Giriş Kayıtları</h3><small>Yakın zamanda gerçekleşen erişimler</small></div></div><a class="section-link" href="gecmis-girisler.html">Tüm geçmiş <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 18 6-6-6-6"/></svg></a></div>
+          <div class="table-toolbar"><div class="filter-row"><label for="admin-date-filter">Tarihe göre filtrele</label><input id="admin-date-filter" type="date" class="date-search-bar" data-table-filter="admin-access-table" data-count-target="admin-access-count"></div><span class="badge badge-neutral" id="admin-access-count">3 kayıt</span></div>
+          <div class="table-wrap"><table id="admin-access-table"><thead><tr><th>Saat</th><th>Kullanıcı</th><th>Rol</th><th>Giriş Yöntemi</th><th>Durum</th></tr></thead><tbody>
+            <tr data-date="22.07.2026"><td class="cell-primary">14:32</td><td class="cell-primary">Dr. Ahmet Yılmaz</td><td>Hoca</td><td><span class="method-cell"><span class="method-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m12 11 8-8M15 6l3 3"/></svg></span>Günlük Şifre</span></td><td><span class="badge badge-success">Başarılı</span></td></tr>
+            <tr data-date="22.07.2026"><td class="cell-primary">14:28</td><td class="cell-primary">Mehmet Can</td><td>Öğrenci</td><td><span class="method-cell"><span class="method-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M3 10h18"/></svg></span>Kart</span></td><td><span class="badge badge-success">Başarılı</span></td></tr>
+            <tr data-date="22.07.2026"><td class="cell-primary">14:10</td><td class="cell-primary">Bilinmeyen</td><td>-</td><td><span class="method-cell"><span class="method-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m12 11 8-8M15 6l3 3"/></svg></span>Günlük Şifre</span></td><td><span class="badge badge-danger">Hatalı Şifre</span></td></tr>
+          </tbody></table></div>
+        </section>
+      </div>
+    </main>
   </div>
-
 </body>
 </html>
