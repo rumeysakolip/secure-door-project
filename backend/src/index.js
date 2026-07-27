@@ -86,3 +86,33 @@ const passwordService = require('./services/passwordService');
      passwordService.initCron();
 
    });
+const express = require('express');
+const cors = require('cors');
+
+// Auth Route ve Middleware İçe Aktarmaları
+const authRoutes = require('./routes/authRoutes');
+const { authenticateToken, requireAdmin } = require('./middlewares/authMiddleware');
+
+const app = express();
+
+// Body Parser ve CORS
+app.use(express.json());
+app.use(cors());
+
+// 1. Auth Endpoint'lerini Tanımla (Giriş yapma / Token alma herkese açık)
+app.use('/api/auth', authRoutes);
+
+// 2. Korumak İstediğin Admin Route'ları Varsa (Örnek Kullanım):
+// app.use('/api/kullanicilar', authenticateToken, requireAdmin, kullaniciRoutes);
+// app.use('/api/kapilar', authenticateToken, requireAdmin, kapiRoutes);
+// app.use('/api/kartlar', authenticateToken, requireAdmin, kartRoutes);
+
+// Test Endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'API çalışıyor.' });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Sunucu ${PORT} portunda çalışıyor.`);
+});
