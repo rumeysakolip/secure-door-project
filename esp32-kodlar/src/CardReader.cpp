@@ -3,8 +3,10 @@
 #ifdef ARDUINO
 #include <SPI.h>
 
-CardReader::CardReader(uint8_t ssPin, uint8_t rstPin)
-    : _mfrc522(ssPin, rstPin), _ssPin(ssPin), _rstPin(rstPin) {}
+CardReader::CardReader(uint8_t ssPin, uint8_t rstPin, uint8_t sckPin, uint8_t misoPin, uint8_t mosiPin)
+    : _mfrc522(ssPin, rstPin),
+      _ssPin(ssPin), _rstPin(rstPin),
+      _sckPin(sckPin), _misoPin(misoPin), _mosiPin(mosiPin) {}
 
 bool CardReader::okuyucuyuBaslat() {
     _mfrc522.PCD_Init();
@@ -13,7 +15,13 @@ bool CardReader::okuyucuyuBaslat() {
 }
 
 void CardReader::begin() {
-    SPI.begin();
+    // ONEMLI: parametresiz SPI.begin() ESP32'nin donanimsal VARSAYILAN VSPI
+    // pinlerini (SCK=18, MISO=19, MOSI=23) kullanir. Bu pinler config.h'de
+    // tanimlanan ozel RFID pinleriyle (orn. SCK=32, MISO=34, MOSI=13) AYNI
+    // DEGILSE, yazilim ile fiziksel kablolama tamamen farkli pinlerde
+    // konusur ve RC522 hicbir zaman yanit vermez. Bu yuzden pinleri burada
+    // acikca belirtiyoruz.
+    SPI.begin(_sckPin, _misoPin, _mosiPin, _ssPin);
     _status = okuyucuyuBaslat() ? ReaderStatus::ACTIVE : ReaderStatus::DISCONNECTED;
     _sonBaglantiDenemesi = millis();
 }
@@ -38,6 +46,24 @@ void CardReader::update() {
     }
 
     std::string uid = uidToString(_mfrc522.uid.uidByte, _mfrc522.uid.size);
+
+    // --- DETAYLI SERI EKRAN CIKTISI ---
+    MFRC522::PICC_Type piccType = _mfrc522.PICC_GetType(_mfrc522.uid.sak);
+    Serial.println(F("========================================"));
+    Serial.println(F("[CardReader] KART OKUNDU"));
+    Serial.print(F("  UID          : "));
+    Serial.println(uid.c_str());
+    Serial.print(F("  UID Boyutu   : "));
+    Serial.print(_mfrc522.uid.size);
+    Serial.println(F(" byte"));
+    Serial.print(F("  SAK          : 0x"));
+    Serial.println(_mfrc522.uid.sak, HEX);
+    Serial.print(F("  Kart Tipi    : "));
+    Serial.println(_mfrc522.PICC_GetTypeName(piccType));
+    Serial.print(F("  Zaman (ms)   : "));
+    Serial.println(millis());
+    Serial.println(F("========================================"));
+
     _mfrc522.PICC_HaltA();
     _mfrc522.PCD_StopCrypto1();
 
@@ -49,7 +75,8 @@ void CardReader::update() {
 
     unsigned long simdi = millis();
     if (isDuplicateRead(uid, _lastCardId, simdi, _lastReadTimestamp, 1000)) {
-        return; 
+        Serial.println(F("[CardReader] Tekrarli okuma (debounce) - atlaniyor."));
+        return;
     }
 
     _lastCardId = uid;

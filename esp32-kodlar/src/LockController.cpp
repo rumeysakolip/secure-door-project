@@ -18,7 +18,8 @@ LockController::LockController(uint8_t relay_pin, uint8_t buzzer_pin) {
 void LockController::begin() {
     pinMode(relayPin, OUTPUT);
     pinMode(buzzerPin, OUTPUT);
-    digitalWrite(relayPin, LOW);  
+    // ACTIVE LOW ROLE: Baslangicta HIGH yaparak kilidi KAPALI tutuyoruz
+    digitalWrite(relayPin, HIGH);  
     digitalWrite(buzzerPin, LOW); 
 }
 
@@ -27,7 +28,8 @@ bool LockController::unlockDoor() {
         return false; 
     }
 
-    digitalWrite(relayPin, HIGH);
+    // ACTIVE LOW ROLE: LOW gondererek role pini tetikliyoruz (kilidi aciyoruz)
+    digitalWrite(relayPin, LOW);
     isUnlocked = true;
     unlockTimer = millis(); 
     return true;
@@ -36,10 +38,11 @@ bool LockController::unlockDoor() {
 void LockController::update(bool currentDoorSensorState) {
     unsigned long currentMillis = millis(); 
 
-    // A. KİLİT KAPATMA MANTIĞI
+    // A. KILIT KAPATMA MANTIGI
     if (isUnlocked) {
         if (currentMillis - unlockTimer >= UNLOCK_DURATION) {
-            digitalWrite(relayPin, LOW); 
+            // ACTIVE LOW ROLE: HIGH gondererek enerjiyi kesiyoruz (kilitliyoruz)
+            digitalWrite(relayPin, HIGH); 
             isUnlocked = false;
             
             isCoolingDown = true;

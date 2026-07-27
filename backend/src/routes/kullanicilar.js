@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
+const { refreshSingleUserPin } = require('../services/pinService');
 
 // Kullanıcıları listele (durum ve rol parametrelerine göre isteğe bağlı filtreleme ile)
 router.get('/', async (req, res) => {
@@ -24,9 +25,6 @@ router.get('/', async (req, res) => {
         res.status(500).json({ hata: "Sunucu hatası" });
     }
 });
-const express = require('express');
-const router = express.Router();
-const { refreshSingleUserPin } = require('../services/pinService');
 
 // POST /api/kullanicilar/:id/sifre-yenile
 router.post('/:id/sifre-yenile', async (req, res) => {
@@ -42,8 +40,6 @@ router.post('/:id/sifre-yenile', async (req, res) => {
     });
   }
 });
-
-module.exports = router;
 
 // ID'ye göre tek bir kullanıcı getir
 router.get('/:id', async (req, res) => {

@@ -22,6 +22,7 @@ const grupRotalari = require('./routes/gruplar');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const mqttService = require('./services/mqttService');
+const passwordService = require('./services/passwordService');
 const { initSifreCron } = require('./cron/sifreCron');
 const { initIhlalCron } = require('./cron/ihlalCron');
 
@@ -29,6 +30,7 @@ const { initIhlalCron } = require('./cron/ihlalCron');
 mqttService.connect();
 initSifreCron();
 initIhlalCron();
+passwordService.initCron();
 
 
 // Middleware'ler
