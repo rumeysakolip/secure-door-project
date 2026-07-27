@@ -19,6 +19,7 @@ const erisimKaydiRotalari = require('./routes/erisimKayitlari');
 const ihlalKaydiRotalari = require('./routes/ihlalKayitlari');
 const grupRotalari = require('./routes/gruplar');
 const yetkiKuraliRotalari = require('./routes/yetkiKurallari');
+const authRotalari = require('./routes/authRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,7 +34,6 @@ initSifreCron();
 initIhlalCron();
 passwordService.initCron();
 
-
 // Middleware'ler
 app.use(express.json());
 app.use(cors());
@@ -42,6 +42,21 @@ app.use(cors());
 app.get('/', (req, res) => {
     res.json({ message: 'Backend, Prisma ORM ve PostgreSQL veritabanı ile aktif olarak çalışıyor!' });
 });
+
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'OK', message: 'API çalışıyor.' });
+});
+
+// Auth Endpoint'leri (giriş yapma / token alma herkese açık)
+app.use('/api/auth', authRotalari);
+
+// -------------------------------------------------------------
+// NOT: Admin'e özel route'ları authenticateToken/requireAdmin ile
+// korumak hâlâ Bölüm 2/6 kapsamında yapılacak bir iş (bkz. YAPILACAKLAR.md).
+// Örnek kullanım:
+// const { authenticateToken, requireAdmin } = require('./middlewares/authMiddleware');
+// app.use('/api/kullanicilar', authenticateToken, requireAdmin, kullaniciRotalari);
+// -------------------------------------------------------------
 
 // Endpoint Bağlantıları
 app.use('/api/birimler', birimRotalari);
@@ -80,43 +95,4 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
     console.log(`🚀 Backend sunucusu ${PORT} portunda başlatıldı.`);
-});
-const passwordService = require('./services/passwordService');
-
-
-   app.listen(PORT, () => {
-     console.log(`Sunucu ${PORT} portunda çalışıyor.`);
-     mqttService.connect();
-     passwordService.initCron();
-
-   });
-const express = require('express');
-const cors = require('cors');
-
-// Auth Route ve Middleware İçe Aktarmaları
-const authRoutes = require('./routes/authRoutes');
-const { authenticateToken, requireAdmin } = require('./middlewares/authMiddleware');
-
-const app = express();
-
-// Body Parser ve CORS
-app.use(express.json());
-app.use(cors());
-
-// 1. Auth Endpoint'lerini Tanımla (Giriş yapma / Token alma herkese açık)
-app.use('/api/auth', authRoutes);
-
-// 2. Korumak İstediğin Admin Route'ları Varsa (Örnek Kullanım):
-// app.use('/api/kullanicilar', authenticateToken, requireAdmin, kullaniciRoutes);
-// app.use('/api/kapilar', authenticateToken, requireAdmin, kapiRoutes);
-// app.use('/api/kartlar', authenticateToken, requireAdmin, kartRoutes);
-
-// Test Endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'API çalışıyor.' });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Sunucu ${PORT} portunda çalışıyor.`);
 });

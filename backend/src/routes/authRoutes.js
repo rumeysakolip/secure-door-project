@@ -2,8 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const argon2 = require('argon2');
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const prisma = require('../config/prisma');
 const { authenticateToken, JWT_SECRET } = require('../middlewares/authMiddleware');
 
 // BigInt veritabanı ID'lerini JSON uyumlu hale getiren yardımcı fonksiyon
