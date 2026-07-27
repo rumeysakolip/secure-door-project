@@ -112,7 +112,11 @@
   </div>
 
   <!-- YENİ SCRIPT KODU -->
+  <!-- YENİ SCRIPT KODU -->
   <script>
+    // Backend adresi tanımlandı
+    const API_BASE_URL = 'http://localhost:3000';
+
     document.getElementById('loginForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       
@@ -123,7 +127,8 @@
       errorDiv.style.display = 'none';
 
       try {
-        const response = await fetch('/api/auth/login', {
+        // İsteği doğrudan 3000 portuna gönderiyoruz:
+        const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ eposta, pin })
@@ -139,7 +144,7 @@
           // Ana sayfaya yönlendir
           window.location.href = 'index.html';
         } else {
-          // Sunucudan gelen hata mesajını göster (örn: Hatalı PIN)
+          // Sunucudan gelen hata mesajını göster
           errorDiv.textContent = data.message || 'Giriş başarısız.';
           errorDiv.style.display = 'block';
         }
