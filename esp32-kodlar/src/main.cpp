@@ -23,7 +23,7 @@ static byte colPins[KeypadInput::COLUMN_COUNT] = {
 };
 
 // Nesne Tanımlamaları
-CardReader cardReader(RFID_SS_PIN, RFID_RST_PIN);
+CardReader cardReader(RFID_SS_PIN, RFID_RST_PIN, RFID_SCK_PIN, RFID_MISO_PIN, RFID_MOSI_PIN);
 MqttManager mqttManager(MQTT_BROKER_HOST, MQTT_BROKER_PORT);
 LockController lock(RELAY_PIN, BUZZER_PIN);
 NetworkManager network(WIFI_SSID, WIFI_PASSWORD);
@@ -64,8 +64,12 @@ void loop() {
         Serial.printf("[AUTH] Kart Okundu: %s\n", cardUid.c_str());
 
         // Çevrimiçi (Online) Doğrulama
+        // NOT: AccessControl::verifyAccess Arduino String bekliyor, ancak
+        // authData std::string tipinde. Dogrudan gecince tip uyusmazligi
+        // derleme hatasi veriyordu; std::string -> String donusumu burada
+        // yapiliyor.
         if (WiFi.status() == WL_CONNECTED) {
-            accessResult = ac.verifyAccess(authData, true);
+            accessResult = ac.verifyAccess(String(authData.c_str()), true);
         } else {
             Serial.println("[SYSTEM] Offline durumda kartla gecis yapilamaz!");
             accessResult = false;
@@ -81,24 +85,49 @@ void loop() {
         ev.dogrulamaYontemi = "kart";
         ev.timestampEpoch = time(nullptr); // İnternetten alınan gerçek saat
 
+        bool mqttGonderildi = false;
+
         if (accessResult) {
             DoorState::durumGecisiYap(Durum::ONAYLANDI);
             alertSystem.playSuccess();
 
             ev.sonuc = "izin";
-            mqttManager.publishEntryEvent(ev);
+            mqttGonderildi = mqttManager.publishEntryEvent(ev);
+
+            Serial.println(F("[AUTH] SONUC: GECIS ONAYLANDI"));
         } else {
             DoorState::durumGecisiYap(Durum::REDDEDILDI);
             alertSystem.playAccessDenied();
 
             ev.sonuc = "red";
             ev.redNedeni = "tanimsiz_kart"; // Backend bu kelimeyi görünce kartı Onay Bekleyenlere alacak!
-            mqttManager.publishEntryEvent(ev);
+            mqttGonderildi = mqttManager.publishEntryEvent(ev);
+
+            Serial.println(F("[AUTH] SONUC: GECIS REDDEDILDI (tanimsiz kart)"));
         }
+
+        Serial.print(F("[AUTH] Olay ID   : "));
+        Serial.println(ev.cihazOlayId.c_str());
+        Serial.print(F("[AUTH] Zaman     : "));
+        Serial.println((long)ev.timestampEpoch);
+        Serial.print(F("[AUTH] MQTT'ye gonderildi mi: "));
+        Serial.println(mqttGonderildi ? "EVET" : "HAYIR (baglanti yok / publish basarisiz)");
     }
 
     // 3. Sensör, Kilit ve Durum Makinesi Güncellemeleri
     // Kapı sensörünün (SENSOR_PIN) durumu okunur, dijital okuma simülasyonu
+    //
+    // NOT: "DoorState::update(isDoorPhysicallyOpen, &lock, &alertSystem)" diye
+    // bir fonksiyon DoorState sinifinda hic tanimli degildi (derleme hatasi
+    // "'update' is not a member of 'DoorState'" buradan geliyordu). Gercekte
+    // var olan iki ayri fonksiyon cagrilmali:
+    //   - lock.update(...)       -> rolenin otomatik kilitlenme/kapi acik
+    //                                kalma buzzer uyarisini isler (LockController.cpp)
+    //   - DoorState::guncelle()  -> ONAYLANDI/REDDEDILDI gibi gecici durumlarin
+    //                                sure sonunda BEKLEMEDE'ye donmesini isler
+    // Onceki kodda lock.update() hicbir yerden cagrilmiyordu, yani otomatik
+    // kilitlenme ve "kapi uzun sure acik kaldi" buzzer uyarisi hic calismiyordu.
     bool isDoorPhysicallyOpen = (digitalRead(SENSOR_PIN) == HIGH);
-    DoorState::update(isDoorPhysicallyOpen, &lock, &alertSystem);
+    lock.update(isDoorPhysicallyOpen);
+    DoorState::guncelle();
 }

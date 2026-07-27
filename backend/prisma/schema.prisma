@@ -509,4 +509,3 @@ model SenkronCalismasi {
 
   @@map("senkron_calismasi")
 }
-

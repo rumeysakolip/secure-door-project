@@ -24,7 +24,7 @@ router.get('/', async (req, res) => {
         res.status(500).json({ hata: "Sunucu hatası" });
     }
 });
-const express = require('express');
+
 const router = express.Router();
 const { refreshSingleUserPin } = require('../services/pinService');
 
