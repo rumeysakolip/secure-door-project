@@ -16,9 +16,15 @@ public:
     static constexpr uint8_t UID_MAX_BAYT = 10;
 
 #ifdef ARDUINO
-    CardReader(uint8_t ssPin, uint8_t rstPin);
+    // sckPin/misoPin/mosiPin: ESP32'nin bu projede varsayilan VSPI pinlerini
+    // (18/19/23) DEGIL, config.h'de tanimli OZEL pinleri kullanmasi icin
+    // eklendi. Onceki surumde SPI.begin() parametresiz cagriliyordu, bu da
+    // donanimsal olarak kablolanan pinlerle yazilimin konustugu pinlerin
+    // tamamen farkli olmasina (ve RFID'nin hic yanit vermemesine) sebep
+    // oluyordu.
+    CardReader(uint8_t ssPin, uint8_t rstPin, uint8_t sckPin, uint8_t misoPin, uint8_t mosiPin);
 
-    void begin();          
+    void begin();
     void update();         
 
     bool hasNewRead() const;                    
@@ -42,6 +48,9 @@ private:
     MFRC522 _mfrc522;
     uint8_t _ssPin;
     uint8_t _rstPin;
+    uint8_t _sckPin;
+    uint8_t _misoPin;
+    uint8_t _mosiPin;
     ReaderStatus _status = ReaderStatus::DISCONNECTED;
     std::string _lastCardId;
     unsigned long _lastReadTimestamp = 0;

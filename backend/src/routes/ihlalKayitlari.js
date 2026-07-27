@@ -36,4 +36,33 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// Manuel ihlal kaydı oluştur (otomatik cron tespiti dışında, admin elle de açabilsin diye)
+router.post('/', async (req, res) => {
+    try {
+        const { kullaniciId, tarih, tur, aciklama } = req.body;
+
+        if (kullaniciId == null || !tur) {
+            return res.status(400).json({ hata: "'kullaniciId' ve 'tur' alanları zorunludur" });
+        }
+
+        const yeniIhlal = await prisma.ihlalKaydi.create({
+            data: {
+                kullaniciId: parseInt(kullaniciId),
+                tarih: tarih ? new Date(tarih) : new Date(),
+                tur,
+                aciklama: aciklama ?? null
+            },
+            include: { kullanici: true }
+        });
+
+        res.status(201).json(yeniIhlal);
+    } catch (error) {
+        console.error("İhlal oluşturulurken hata:", error);
+        if (error.code === 'P2003') {
+            return res.status(400).json({ hata: "Belirtilen kullaniciId geçerli değil" });
+        }
+        res.status(500).json({ hata: "Sunucu hatası" });
+    }
+});
+
 module.exports = router;

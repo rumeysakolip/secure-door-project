@@ -36,39 +36,29 @@
           <p>Yönetim paneline erişmek için kimlik bilgilerinizi girin.</p>
         </div>
 
-        <form onsubmit="alert('Giriş başarılı!'); window.location.href='index.html'; return false;">
-          <div class="form-group">
-            <label for="login-identity">Kullanıcı Adı / E-posta</label>
-            <div class="input-with-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
-              <input id="login-identity" type="text" class="form-control" placeholder="Örn: admin" autocomplete="username" required>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="login-password">Şifre</label>
-            <div class="input-with-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg>
-              <input id="login-password" type="password" class="form-control" placeholder="••••••••" autocomplete="current-password" required>
-            </div>
-          </div>
-          <div class="forgot-pass"><a href="#" onclick="forgotPassword(); return false;">Şifremi unuttum</a></div>
-          <button type="submit" class="btn-login">Giriş Yap <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 18 6-6-6-6"/></svg></button>
-        </form>
+    <form onsubmit="alert('Giriş başarılı!'); window.location.href='index.html'; return false;">
+      <div class="form-group">
+        <label>Kullanıcı Adı / E-posta</label>
+        <input type="text" class="form-control" placeholder="Örn: admin" required>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 10px;">
+        <label>Şifre</label>
+        <input type="password" class="form-control" placeholder="••••••••" required>
+      </div>
 
         <div class="login-security"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg>Güvenli oturum bağlantısı</div>
       </div>
     </section>
   </main>
 
+  <!-- YENİ SCRIPT KODU -->
   <script>
+    // Şifremi Unuttum İşlevi (Mail Gönderme Simülasyonu)
     function forgotPassword() {
       const email = prompt("Lütfen sisteme kayıtlı e-posta adresinizi girin (@subu.edu.tr):");
-      if (email) {
-        if (email.trim() !== "") {
-          alert("Şifre sıfırlama talimatları ve geçici şifreniz " + email + " adresine başarıyla gönderildi!");
-        } else {
-          alert("Geçerli bir e-posta adresi girmelisiniz.");
-        }
+      if (email && email.trim() !== "") {
+        alert("Şifre sıfırlama talimatları " + email + " adresine başarıyla gönderildi!");
       }
     }
   </script>

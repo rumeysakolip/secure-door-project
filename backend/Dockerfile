@@ -23,3 +23,6 @@ RUN chmod +x /app/docker-entrypoint.sh
 EXPOSE 3000
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
+# 4. Prisma Client oluşturmadan önce geçici DATABASE_URL tanımlıyoruz
+ENV DATABASE_URL="postgresql://postgres:postgres@localhost:5432/dummy_db?schema=public"
+RUN npx prisma generate

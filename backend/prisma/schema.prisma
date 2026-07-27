@@ -8,7 +8,6 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-
 // ============================================================
 // Enum tanımları (kapalı/sabit değer kümesine sahip alanlar için)
 // ============================================================
@@ -123,6 +122,7 @@ model Kullanici {
   soyad            String     @db.VarChar(64)
   eposta           String?    @db.VarChar(128)
 
+  
   birimId          Int?
   birim            Birim?     @relation(fields: [birimId], references: [birimId])
 
@@ -256,10 +256,14 @@ model CihazKapiAtama {
 // 8. Cihaz Durumu (Monitoring)
 // ============================================================
 
+// ============================================================
+// 8. Cihaz Durumu (Monitoring)
+// ============================================================
+
 model CihazDurumu {
-  cihazDurumuId   BigInt    @id @default(autoincrement())
-  cihazId         Int
-  cihaz           Cihaz     @relation(fields: [cihazId], references: [cihazId])
+  cihazDurumuId    BigInt    @id @default(autoincrement())
+  cihazId          Int
+  cihaz            Cihaz     @relation(fields: [cihazId], references: [cihazId])
 
   kapiDurumu      KapiAcikKapaliDurum
   cihazDurumTip   CihazBaglantiDurumu
@@ -268,9 +272,9 @@ model CihazDurumu {
   firmwareVersiyon String? @db.VarChar(32)
   bellekKullanimi Int?      // KB
   kapiAcilmaSayaci Int?
-  kapiAcilmaSuresi Int?    // saniye
+  kapiAcilmaSuresi Int?      // saniye
 
-  sonHeartbeat    DateTime? @db.Timestamptz()
+  sonHeartbeat     DateTime? @db.Timestamptz()
   guncellenmeTarihi DateTime @default(now()) @db.Timestamptz()
 
   @@map("cihaz_durumu")
@@ -337,8 +341,8 @@ model ArizaBildirimi {
   olusturulma DateTime @default(now()) @db.Timestamptz()
 
   @@map("ariza_bildirimi")
-}
 
+}
 // ============================================================
 // 12. Grup
 // ============================================================
