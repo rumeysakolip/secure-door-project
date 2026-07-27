@@ -18,6 +18,7 @@ const cihazDurumuRotalari = require('./routes/cihazDurumlari');
 const erisimKaydiRotalari = require('./routes/erisimKayitlari');
 const ihlalKaydiRotalari = require('./routes/ihlalKayitlari');
 const grupRotalari = require('./routes/gruplar');
+const yetkiKuraliRotalari = require('./routes/yetkiKurallari');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -54,6 +55,7 @@ app.use('/api/cihaz-durumlari', cihazDurumuRotalari);
 app.use('/api/erisim-kayitlari', erisimKaydiRotalari);
 app.use('/api/ihlal-kayitlari', ihlalKaydiRotalari);
 app.use('/api/gruplar', grupRotalari);
+app.use('/api/yetki-kurallari', yetkiKuraliRotalari);
 
 // -------------------------------------------------------------
 // EKLEYEBİLECEĞİN YERLER: (Rotalar bittikten sonra)
