@@ -24,7 +24,7 @@
 // boot edebiliyorsa dokunmaya gerek yok; ama ileride "bazen acilmiyor/
 // resetleniyor" gibi kararsiz bir davranis gorursseniz once bu 3 pini
 // suphelenin.
-#define RELAY_PIN       0   // Röle IN Pini (Röle Tetikleme) -- strapping pin (GPIO0), dikkat
+#define RELAY_PIN       12  // Röle IN Pini (GPIO12'ye taşındı, Active Low röle için daha güvenli)
 #define SENSOR_PIN      2   // Kilit Sarı Kablo (Kapı Durum Sensörü) -- strapping pin (GPIO2), dikkat
 #define BUZZER_PIN      14  // Buzzer Pini
 // RGB LED Pin Tanımlamaları
