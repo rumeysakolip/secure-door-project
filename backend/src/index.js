@@ -19,6 +19,8 @@ const erisimKaydiRotalari = require('./routes/erisimKayitlari');
 const ihlalKaydiRotalari = require('./routes/ihlalKayitlari');
 const grupRotalari = require('./routes/gruplar');
 
+const arizaRotalari = require('./routes/arizalar');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const mqttService = require('./services/mqttService');
@@ -55,6 +57,7 @@ app.use('/api/erisim-kayitlari', erisimKaydiRotalari);
 app.use('/api/ihlal-kayitlari', ihlalKaydiRotalari);
 app.use('/api/gruplar', grupRotalari);
 
+app.use('/api/arizalar', arizaRotalari);
 // -------------------------------------------------------------
 // EKLEYEBİLECEĞİN YERLER: (Rotalar bittikten sonra)
 // -------------------------------------------------------------
@@ -75,7 +78,6 @@ app.use((err, req, res, next) => {
 });
 
 // -------------------------------------------------------------
-
 app.listen(PORT, () => {
     console.log(`🚀 Backend sunucusu ${PORT} portunda başlatıldı.`);
 });
