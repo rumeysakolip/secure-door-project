@@ -35,6 +35,7 @@ services:
     ports:
       - "1883:1883"   # ESP32 ve Backend'in bağlandığı standart MQTT portu
       - "9001:9001"   # Web arayüzleri için WebSocket portu
+    command: mosquitto -c /dev/null -p 1883 -v
     restart: unless-stopped
     networks:
       - kapi-network
@@ -93,3 +94,4 @@ volumes:
 networks:
   kapi-network:
     driver: bridge
+  

@@ -21,6 +21,7 @@
       width: 220px;
     }
   </style>
+  
 </head>
 <body>
 
@@ -33,7 +34,7 @@
       <a href="gecmis-girisler.html">📜 Giriş Geçmişi</a>
       <a href="yetkilendirme.html">👥 Yetkilendirme</a>
       <a href="ariza-gecmisi.html">🛠️ Arıza Geçmişi</a>
-      <a href="login.html" style="color: var(--status-red);">Çıkış Yap</a>>
+      <a href="login.html" style="color: var(--status-red);">Çıkış Yap</a>
     </div>
   </nav>
 
@@ -115,7 +116,7 @@
             <td><span class="badge badge-success">Başarılı</span></td>
           </tr>
           <tr>
-            <<td>22.07.2026 14:32</td>
+            <td>22.07.2026 14:32</td>
             <td>Mehmet Can</td>
             <td>Öğrenci</td>
             <td>💳 Kart</td>
@@ -132,6 +133,20 @@
       </table>
     </div>
   </div>
+<script>
+  // 1. Oturum Kontrolü (Sayfa açılır açılmaz çalışır)
+  const token = localStorage.getItem('token');
+  if (!token) {
+    window.location.href = 'login.html';
+  }
 
+  // 2. Çıkış Yap Butonu Dinleyicisi
+  document.getElementById('logoutBtn')?.addEventListener('click', function(e) {
+    e.preventDefault();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = 'login.html';
+  });
+</script>
 </body>
 </html>

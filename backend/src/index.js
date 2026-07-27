@@ -7,6 +7,9 @@ BigInt.prototype.toJSON = function () {
 };
 
 // Rotaları içe aktarma
+// 'middlewares' (sonunda 's' var) olarak değiştirin:
+const { authenticateToken, requireAdmin } = require('./middlewares/authMiddleware');
+
 const birimRotalari = require('./routes/birimler');
 const kullaniciRotalari = require('./routes/kullanicilar');
 const kartRotalari = require('./routes/kartlar');
