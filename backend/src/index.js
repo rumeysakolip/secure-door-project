@@ -7,6 +7,9 @@ BigInt.prototype.toJSON = function () {
 };
 
 // Rotaları içe aktarma
+// 'middlewares' (sonunda 's' var) olarak değiştirin:
+const { authenticateToken, requireAdmin } = require('./middlewares/authMiddleware');
+
 const birimRotalari = require('./routes/birimler');
 const kullaniciRotalari = require('./routes/kullanicilar');
 const kartRotalari = require('./routes/kartlar');
@@ -18,6 +21,8 @@ const cihazDurumuRotalari = require('./routes/cihazDurumlari');
 const erisimKaydiRotalari = require('./routes/erisimKayitlari');
 const ihlalKaydiRotalari = require('./routes/ihlalKayitlari');
 const grupRotalari = require('./routes/gruplar');
+const yetkiKuraliRotalari = require('./routes/yetkiKurallari');
+const authRotalari = require('./routes/authRoutes');
 
 const arizaRotalari = require('./routes/arizalar');
 
@@ -34,7 +39,6 @@ initSifreCron();
 initIhlalCron();
 passwordService.initCron();
 
-
 // Middleware'ler
 app.use(express.json());
 app.use(cors());
@@ -43,6 +47,21 @@ app.use(cors());
 app.get('/', (req, res) => {
     res.json({ message: 'Backend, Prisma ORM ve PostgreSQL veritabanı ile aktif olarak çalışıyor!' });
 });
+
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'OK', message: 'API çalışıyor.' });
+});
+
+// Auth Endpoint'leri (giriş yapma / token alma herkese açık)
+app.use('/api/auth', authRotalari);
+
+// -------------------------------------------------------------
+// NOT: Admin'e özel route'ları authenticateToken/requireAdmin ile
+// korumak hâlâ Bölüm 2/6 kapsamında yapılacak bir iş (bkz. YAPILACAKLAR.md).
+// Örnek kullanım:
+// const { authenticateToken, requireAdmin } = require('./middlewares/authMiddleware');
+// app.use('/api/kullanicilar', authenticateToken, requireAdmin, kullaniciRotalari);
+// -------------------------------------------------------------
 
 // Endpoint Bağlantıları
 app.use('/api/birimler', birimRotalari);
@@ -56,6 +75,7 @@ app.use('/api/cihaz-durumlari', cihazDurumuRotalari);
 app.use('/api/erisim-kayitlari', erisimKaydiRotalari);
 app.use('/api/ihlal-kayitlari', ihlalKaydiRotalari);
 app.use('/api/gruplar', grupRotalari);
+app.use('/api/yetki-kurallari', yetkiKuraliRotalari);
 
 app.use('/api/arizalar', arizaRotalari);
 // -------------------------------------------------------------

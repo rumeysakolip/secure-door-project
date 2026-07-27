@@ -1,8 +1,7 @@
 const { faker } = require('@faker-js/faker');
+const argon2 = require('argon2'); // 1. Argon2 kütüphanesini içeri aktardık
 
 // Uygulamanın kullandığı, driver adapter ile kurulmuş aynı Prisma client'ı
-// kullan (Prisma 7'de schema.prisma'da datasource url tanımlı olmadığı için
-// adapter'sız `new PrismaClient()` çağrısı hata veriyor).
 const prisma = require('../src/config/prisma');
 
 async function main() {
@@ -18,14 +17,34 @@ async function main() {
   });
   console.log('✓ Bölüm oluşturuldu:', bolum.ad);
 
+  // Argon2 ile '123456' şifresini hash'liyoruz
+  const hashedPassword = await argon2.hash('123456');
+
   // 2. Hocalar oluştur (12 tane)
   const hocalar = [];
-  for (let i = 0; i < 12; i++) {
+
+  // Sabit Giriş Kullanıcısı (Ahmet)
+  const ahmet = await prisma.kullanici.create({
+    data: {
+      ad: 'Ahmet',
+      soyad: 'Yılmaz',
+      eposta: 'ahmet@subu.edu.tr',
+      pinHash: hashedPassword, // Hashlenmiş şifreyi verdik
+      birimId: bolum.birimId,
+      durum: 'aktif',
+      rol: 'hoca',
+    },
+  });
+  hocalar.push(ahmet);
+
+  // Geri kalan 11 rastgele hoca
+  for (let i = 0; i < 11; i++) {
     const hoca = await prisma.kullanici.create({
       data: {
         ad: faker.person.firstName('male'),
         soyad: faker.person.lastName(),
         eposta: faker.internet.email(),
+        pinHash: hashedPassword, // Hashlenmiş şifreyi verdik
         birimId: bolum.birimId,
         durum: 'aktif',
         rol: 'hoca',

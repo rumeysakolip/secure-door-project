@@ -2,6 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ana Sayfa | Kontrol Paneli</title>
   <link rel="stylesheet" href="style.css">
   <style>
@@ -54,19 +55,37 @@
           <strong style="color: var(--status-green); font-size: 1.1rem;">Kilitli (Güvenli)</strong>
         </div>
       </div>
-
-      <!-- 2. KUTU: ARIZA BİLDİRİMİ -->
-      <div class="card-box clickable" onclick="window.location.href='ariza-gecmisi.html';">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <h3 style="margin: 0;">🛠️ Kapı Arızaları</h3>
-          <span class="badge badge-warning">1 Bildirim</span>
-        </div>
-        <hr style="border-color: var(--steel-blue); margin: 15px 0;">
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0 0 10px 0;">
-          • RFID okuyucu tuş takımında '5' tuşu sert basıyor.
-        </p>
-        <div style="text-align: right; color: var(--steel-light); font-size: 0.85rem; font-weight: bold;">
-          Arıza Geçmişi Sayfası →
+      <div class="nav-section-label">Yönetim</div>
+      <div class="nav-links">
+        <a class="active" href="index.html" aria-current="page">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+          <span>Ana Sayfa</span>
+        </a>
+        <a href="gecici-sifre.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m12 11 8-8M15 6l3 3M17 4l3 3"/></svg>
+          <span>Geçici Şifre</span>
+        </a>
+        <a href="gecmis-girisler.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>
+          <span>Giriş Geçmişi</span>
+        </a>
+        <a href="yetkilendirme.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg>
+          <span>Yetkilendirme</span>
+        </a>
+        <a href="ariza-gecmisi.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3M14 16l6-6 2 2-6 6"/></svg>
+          <span>Arıza Geçmişi</span>
+        </a>
+        <a class="logout-link" href="login.html">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          <span>Çıkış Yap</span>
+        </a>
+      </div>
+      <div class="sidebar-meta">
+        <div class="sidebar-meta-row">
+          <span class="sidebar-avatar">SL</span>
+          <div><strong>Sistem Yönetimi</strong><small>Güvenli oturum</small></div>
         </div>
       </div>
     </div>

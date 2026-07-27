@@ -20,15 +20,17 @@ Kod incelemesine dayalı eksiklik listesi. Öncelik sırasına göre bölümlere
 
 ## Bölüm 3 — Eksik CRUD Endpoint'leri
 
-Şu an tüm route'lar sadece `GET`. Eklenmesi gerekenler:
-
-- [ ] Kullanıcılar: `POST` (yeni hoca/admin ekle), `PUT/PATCH` (bilgi güncelle, durum aktif/pasif/askıya al), `DELETE`.
-- [ ] Kartlar: `POST` (yeni kart tanımla), `PUT/PATCH` (durum değiştir: kayıp/iptal/hasarlı), `DELETE`.
-- [ ] Kart Yetkilendirmeler: `POST` (kart-kullanıcı eşleştir), `PUT/PATCH` (yetki iptal/pasif et).
-- [ ] Kapılar / Cihazlar / Cihaz-Kapı Atama: `POST`/`PUT`/`DELETE` (yeni kapı/cihaz ekleme, atama yapma).
-- [ ] Gruplar: `POST`/`PUT`/`DELETE` (grup oluştur, üye ekle/çıkar).
-- [ ] Yetki Kuralları (`YetkiKurali` modeli için hiç route yok): gün/saat bazlı erişim kuralı CRUD.
-- [ ] İhlal Kayıtları: `POST` (manuel ihlal kaydı açma) — şu an sadece listeleme var.
+- [x] Kullanıcılar: `POST /api/kullanicilar`, `PUT /api/kullanicilar/:id`, `DELETE /api/kullanicilar/:id` eklendi.
+- [x] Kartlar: `POST /api/kartlar`, `PUT /api/kartlar/:id` (durum: kayip/iptal/hasarli), `DELETE /api/kartlar/:id` eklendi.
+- [x] Kart Yetkilendirmeler: `POST /api/kart-yetkilendirmeler`, `PUT /api/kart-yetkilendirmeler/:id` (durum iptal/pasif) eklendi.
+- [x] Kapılar: `POST /api/kapilar`, `PUT /api/kapilar/:id`, `DELETE /api/kapilar/:id` eklendi.
+- [x] Cihazlar: `POST /api/cihazlar`, `PUT /api/cihazlar/:id`, `DELETE /api/cihazlar/:id` eklendi.
+- [x] Cihaz-Kapı Atama: `POST /api/cihaz-kapi-atamalar`, `PUT /api/cihaz-kapi-atamalar/:id` (bitiş tarihiyle atamayı kapatma), `DELETE /api/cihaz-kapi-atamalar/:id` eklendi.
+- [x] Gruplar: `POST /api/gruplar`, `PUT /api/gruplar/:id`, `DELETE /api/gruplar/:id`, üye ekleme `POST /api/gruplar/:id/uyeler`, üye çıkarma `DELETE /api/gruplar/:id/uyeler/:kullaniciId` eklendi.
+- [x] Yetki Kuralları: `backend/src/routes/yetkiKurallari.js` yeni oluşturuldu (`GET`, `GET/:id`, `POST`, `PUT`, `DELETE`), `/api/yetki-kurallari` olarak `index.js`'e bağlandı.
+- [x] İhlal Kayıtları: `POST /api/ihlal-kayitlari` (manuel ihlal kaydı açma) eklendi.
+- [ ] Yukarıdaki yeni endpoint'lerin tamamı Docker üzerinde `curl` ile (create/update/delete senaryolarıyla) test edilmeli — şu ana kadar sadece syntax doğrulaması yapıldı.
+- [ ] `DELETE` endpoint'leri, ilişkili kayıt varsa (FK hatası) 409 dönüyor ve kullanıcıyı "durumu pasif/iptal yap" demeye yönlendiriyor — gerçek admin panelinde bu akışın (soft-delete) UI tarafında da desteklenmesi gerekecek (bkz. Bölüm 5).
 
 ## Bölüm 4 — Bağlanmamış Servisleri Devreye Alma
 
