@@ -85,16 +85,22 @@
       <p style="color: var(--text-muted, #94a3b8); font-size: 0.85rem; margin: 0;">Yönetim paneline erişmek için giriş yapın</p>
     </div>
 
-    <form onsubmit="alert('Giriş başarılı!'); window.location.href='index.html'; return false;">
+    <!-- FORM ETİKETİNE id="loginForm" EKLENDİ, sahte onsubmit KALDIRILDI -->
+    <form id="loginForm">
       <div class="form-group">
         <label>Kullanıcı Adı / E-posta</label>
-        <input type="text" class="form-control" placeholder="Örn: admin" required>
+        <!-- id="eposta" EKLENDİ -->
+        <input type="text" id="eposta" class="form-control" placeholder="Örn: ahmet@subu.edu.tr" required>
       </div>
 
       <div class="form-group" style="margin-bottom: 10px;">
-        <label>Şifre</label>
-        <input type="password" class="form-control" placeholder="••••••••" required>
+        <label>Şifre / PIN</label>
+        <!-- id="pin" EKLENDİ -->
+        <input type="password" id="pin" class="form-control" placeholder="••••••••" required>
       </div>
+
+      <!-- HATALI GİRİŞTE MESAJ GÖSTERİLECEK ALAN EKLENDİ -->
+      <div id="errorMessage" style="color: #ef4444; font-size: 0.85rem; margin-bottom: 10px; display: none;"></div>
 
       <!-- ŞİFREMİ UNUTTUM BAĞLANTISI -->
       <div class="forgot-pass">
@@ -105,16 +111,48 @@
     </form>
   </div>
 
+  <!-- YENİ SCRIPT KODU -->
   <script>
-    // Şifremi Unuttum İşlevi (Mail Gönderme Simülasyonu)
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const eposta = document.getElementById('eposta').value;
+      const pin = document.getElementById('pin').value;
+      const errorDiv = document.getElementById('errorMessage');
+
+      errorDiv.style.display = 'none';
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eposta, pin })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          // Giriş başarılıysa JWT Token ve Kullanıcı bilgisini sakla
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+          
+          // Ana sayfaya yönlendir
+          window.location.href = 'index.html';
+        } else {
+          // Sunucudan gelen hata mesajını göster (örn: Hatalı PIN)
+          errorDiv.textContent = data.message || 'Giriş başarısız.';
+          errorDiv.style.display = 'block';
+        }
+      } catch (err) {
+        errorDiv.textContent = 'Sunucuyla bağlantı kurulamadı.';
+        errorDiv.style.display = 'block';
+      }
+    });
+
     function forgotPassword() {
       const email = prompt("Lütfen sisteme kayıtlı e-posta adresinizi girin (@subu.edu.tr):");
-      if (email) {
-        if (email.trim() !== "") {
-          alert("Şifre sıfırlama talimatları ve geçici şifreniz " + email + " adresine başarıyla gönderildi!");
-        } else {
-          alert("Geçerli bir e-posta adresi girmelisiniz.");
-        }
+      if (email && email.trim() !== "") {
+        alert("Şifre sıfırlama talimatları " + email + " adresine başarıyla gönderildi!");
       }
     }
   </script>
