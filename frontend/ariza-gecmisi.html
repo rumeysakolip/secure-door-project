@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Arıza Geçmişi | Yönetim</title>
   <link rel="stylesheet" href="style.css">
-  <script src="script.js" defer></script>
+  <script src="script.js?v=20260728-1" defer></script>
 </head>
-<body>
+<body data-page="issue-history" data-auth-required="true">
   <div class="app-shell">
     <nav class="navbar" id="main-navigation" aria-label="Ana navigasyon">
       <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span><div class="brand-copy"><div class="logo">SecureLab</div><small>Erişim Yönetim Platformu</small></div></div>
@@ -26,31 +26,45 @@
 
     <main class="main-panel">
       <button type="button" class="menu-toggle floating-menu-toggle" aria-expanded="false" aria-controls="main-navigation" aria-label="Menüyü aç"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-      <header class="topbar"><div class="topbar-context"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-9M14 17H5M17 4l3 3-3 3M8 14l-3 3 3 3"/></svg><span>Teknik Operasyon / Arıza Kayıtları</span></div><span class="system-pill">Destek sistemi aktif</span></header>
+      <header class="topbar"><div class="topbar-context"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 7h-9M14 17H5M17 4l3 3-3 3M8 14l-3 3 3 3"/></svg><span>Teknik Operasyon / Arıza Kayıtları</span></div><span class="system-pill" id="fault-system-state">Kayıtlar yükleniyor</span></header>
 
       <div class="container">
         <section class="page-header">
-          <div><div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3"/></svg>Teknik destek merkezi</div><h1>Arıza ve Şikâyet Geçmişi</h1><p class="page-subtitle">Donanım ve kapı altyapısına ilişkin bildirimleri, durumlarıyla birlikte takip edin.</p></div>
-          <div class="header-actions"><a class="btn-primary" href="ariza-bildir.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>Yeni Bildirim</a></div>
+          <div><div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3"/></svg>Teknik destek merkezi</div><h1 class="page-title">Arıza ve Şikâyet Geçmişi</h1><p class="page-subtitle page-description">Donanım ve kapı altyapısına ilişkin bildirimleri, durumlarıyla birlikte takip edin.</p></div>
+          <div class="header-actions page-actions"><a class="btn-primary" href="ariza-bildir.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 5v14M5 12h14"/></svg>Yeni Bildirim</a></div>
         </section>
 
         <section class="metrics-grid">
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></span><span class="badge badge-warning">Açık</span></div><div class="metric-label">İncelenen Kayıt</div><div class="metric-value">1</div><div class="metric-detail">Teknik ekip değerlendirmesinde</div></article>
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg></span><span class="badge badge-success">Kapalı</span></div><div class="metric-label">Çözülen Kayıt</div><div class="metric-value">1</div><div class="metric-detail">İşlem tamamlanmış bildirim</div></article>
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="6" rx="2"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg></span><span class="badge badge-info">Donanım</span></div><div class="metric-label">Son Bildirim</div><div class="metric-value">RFID</div><div class="metric-detail">Okuyucu tuş takımı sorunu</div></article>
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 2v4M16 2v4M3 10h18"/><rect width="18" height="18" x="3" y="4" rx="2"/></svg></span><span class="badge badge-neutral">Güncel</span></div><div class="metric-label">Kayıt Dönemi</div><div class="metric-value">Temmuz</div><div class="metric-detail">2026 teknik kayıtları</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg></span><span class="badge badge-warning">Açık</span></div><div class="metric-label">İncelenen Kayıt</div><div class="metric-value" id="fault-open-count">—</div><div class="metric-detail">Açık veya incelemedeki kayıtlar</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 6 9 17l-5-5"/></svg></span><span class="badge badge-success">Kapalı</span></div><div class="metric-label">Çözülen Kayıt</div><div class="metric-value" id="fault-resolved-count">—</div><div class="metric-detail">Backend üzerinde çözülen bildirimler</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="6" rx="2"/><path d="M8 10h.01M12 10h.01M16 10h.01"/></svg></span><span class="badge badge-info">Tür</span></div><div class="metric-label">Son Bildirim</div><div class="metric-value" id="fault-last-type">—</div><div class="metric-detail">En son arıza türü</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 2v4M16 2v4M3 10h18"/><rect width="18" height="18" x="3" y="4" rx="2"/></svg></span><span class="badge badge-info">API</span></div><div class="metric-label">Kayıt Dönemi</div><div class="metric-value" id="fault-period">—</div><div class="metric-detail">En son kayıt tarihi</div></article>
         </section>
 
         <section class="card-box">
-          <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg></span><div><h3>Teknik Destek Kayıtları</h3><small>Bildirim durumu ve eklerini inceleyin</small></div></div><span class="badge badge-neutral" id="fault-record-count">2 kayıt</span></div>
-          <div class="table-toolbar"><div class="filter-row"><label for="fault-date-filter">Bildirim tarihi</label><input id="fault-date-filter" type="text" list="ariza-date-suggestions" class="date-search-bar" data-table-filter="fault-records-table" data-count-target="fault-record-count" placeholder="Tarih seçin veya yazın"><datalist id="ariza-date-suggestions"><option value="22.07.2026 (Bugün)"><option value="20.07.2026"><option value="15.07.2026"></datalist></div><span class="ticket-priority">Öncelikli takip</span></div>
+          <p id="fault-integration-status" class="form-message" role="status" aria-live="polite" hidden></p>
+          <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/></svg></span><div><h3>Teknik Destek Kayıtları</h3><small>Bildirim durumu ve eklerini inceleyin</small></div></div></div>
+          <div class="table-toolbar">
+            <div class="filter-row">
+              <div class="filter-field">
+                <label for="fault-date-filter">Bildirim tarihi</label>
+                <div class="filter-input-wrap">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 2v4M16 2v4M3 10h18"/><rect width="18" height="18" x="3" y="4" rx="2"/></svg>
+                  <input id="fault-date-filter" type="text" list="ariza-date-suggestions" class="date-search-bar" data-table-filter="fault-records-table" data-count-target="fault-record-count" placeholder="Tarih seçin veya yazın" aria-controls="fault-records-table">
+                  <datalist id="ariza-date-suggestions"></datalist>
+                </div>
+              </div>
+              <button type="button" class="btn-secondary filter-clear-btn" data-filter-clear="fault-date-filter" aria-controls="fault-records-table" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                Temizle
+              </button>
+            </div>
+            <div class="filter-meta"><span class="ticket-priority">Servis durumu</span><span class="badge badge-neutral" id="fault-record-count" aria-live="polite">0 kayıt</span></div>
+          </div>
           <div class="table-wrap">
             <table id="fault-records-table">
               <thead><tr><th>Tarih / Saat</th><th>Açıklama</th><th>Fotoğraf</th><th>Durum</th></tr></thead>
-              <tbody>
-                <tr><td><span class="cell-primary">22.07.2026</span><span class="cell-secondary">10:15</span></td><td><span class="cell-primary">RFID okuyucu tuş takımı</span><span class="cell-secondary">“5” tuşu sert basıyor.</span></td><td><a href="#" class="section-link">Görüntüle <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></a></td><td><span class="badge badge-warning">İnceleniyor</span></td></tr>
-                <tr><td><span class="cell-primary">20.07.2026</span><span class="cell-secondary">16:40</span></td><td><span class="cell-primary">Kapı kilidi uyarısı</span><span class="cell-secondary">Kilit tam oturmadığı için uyarı veriyor.</span></td><td><a href="#" class="section-link">Görüntüle <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></a></td><td><span class="badge badge-success">Çözüldü</span></td></tr>
-              </tbody>
+              <tbody></tbody>
             </table>
           </div>
           <div class="card-footer"><span class="cell-secondary">Bildirimler teknik inceleme sürecine göre durum etiketiyle sınıflandırılır.</span></div>

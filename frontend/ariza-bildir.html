@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Arıza Bildir | QR Mobil</title>
   <link rel="stylesheet" href="style.css">
+  <script src="script.js?v=20260728-1" defer></script>
 </head>
-<body>
+<body data-page="issue-report">
   <main class="standalone-page">
     <div class="standalone-brand">
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>
@@ -18,23 +19,35 @@
         <header class="ticket-header">
           <span class="ticket-header-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3M14 16l6-6 2 2-6 6"/></svg></span>
           <div class="eyebrow">Yeni destek kaydı</div>
-          <h1>Sistem Arıza Bildirimi</h1>
-          <p>Kapı, kart okuyucu veya diğer donanımlarla ilgili sorunu teknik ekibe iletin.</p>
+          <h1 class="page-title">Sistem Arıza Bildirimi</h1>
+          <p class="page-description">Kapı, kart okuyucu veya diğer donanımlarla ilgili sorunu teknik ekibe iletin.</p>
         </header>
 
-        <form class="ticket-form" onsubmit="alert('Arıza bildiriminiz sisteme iletildi. Teşekkürler!'); window.location.href='index.html'; return false;">
+        <form class="ticket-form" id="issue-report-form">
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="report-full-name">Ad Soyad</label>
-              <input id="report-full-name" type="text" class="form-control" placeholder="Örn: Ahmet Yılmaz" required>
+              <input id="report-full-name" type="text" class="form-control" maxlength="80" placeholder="Örn: Ahmet Yılmaz" required>
             </div>
             <div class="form-group">
               <label class="form-label" for="report-email">E-posta Adresi</label>
               <div class="email-input-group">
-                <input id="report-email" type="text" placeholder="kullanici.adi" required>
+                <input id="report-email" type="text" maxlength="40" placeholder="kullanici.adi" required>
                 <span class="email-domain">@subu.edu.tr</span>
               </div>
             </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="report-issue-type">Arıza Türü</label>
+            <select id="report-issue-type" name="issueType" class="form-control" required>
+              <option value="">Arıza türü seçin</option>
+              <option value="Kapı">Kapı</option>
+              <option value="RFID okuyucu">RFID okuyucu</option>
+              <option value="Tuş takımı">Tuş takımı</option>
+              <option value="Bağlantı">Bağlantı</option>
+              <option value="Diğer">Diğer</option>
+            </select>
           </div>
 
           <div class="form-group">
@@ -51,7 +64,7 @@
 
           <div class="form-group">
             <label class="form-label" for="report-description">Açıklama</label>
-            <textarea id="report-description" class="form-control" rows="4" placeholder="Sorunun nerede ve nasıl oluştuğunu açıklayın..." required></textarea>
+            <textarea id="report-description" name="description" class="form-control" rows="4" maxlength="512" placeholder="Sorunun nerede ve nasıl oluştuğunu açıklayın..." required></textarea>
           </div>
 
           <div class="security-note">
@@ -59,7 +72,9 @@
             <span>Gönderdiğiniz bilgiler yalnızca teknik inceleme amacıyla kullanılacaktır.</span>
           </div>
 
-          <button type="submit" class="btn-primary">
+          <div id="issue-report-message" class="form-message" role="status" aria-live="polite"></div>
+
+          <button type="submit" class="btn-primary" id="issue-report-submit" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
             Bildirimi Gönder
           </button>
@@ -68,14 +83,5 @@
     </div>
   </main>
 
-  <script>
-    function updateFileName(input) {
-      const labelText = document.getElementById('fileNameText');
-      if (input.files && input.files.length > 0) {
-        labelText.textContent = input.files[0].name;
-        labelText.style.color = "var(--steel-light)";
-      }
-    }
-  </script>
 </body>
 </html>
