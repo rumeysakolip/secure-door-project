@@ -21,8 +21,8 @@ private:
     bool buzzerState;
 
     // Süre Ayarları (Milisaniye cinsinden - İstediğin gibi değiştirebilirsin)
-    const unsigned long UNLOCK_DURATION = 5000;      // Kilit 5 saniye açık kalır
-    const unsigned long COOLDOWN_DURATION = 2000;    // Kondansatör için 2 saniye bekleme
+    const unsigned long UNLOCK_DURATION = 2000;      // Kilit 2 saniye açık kalır
+    const unsigned long COOLDOWN_DURATION = 1000;    // Kondansatör için 1 saniye bekleme
     const unsigned long DOOR_WARNING_TIME = 20000;   // 20 saniye sonra uyarı başlar
     const unsigned long BUZZER_INTERVAL = 500;       // 0.5 saniyede bir kesikli ötme (bip...bip)
 

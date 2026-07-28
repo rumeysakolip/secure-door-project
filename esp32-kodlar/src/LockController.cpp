@@ -38,11 +38,11 @@ bool LockController::unlockDoor() {
 void LockController::update(bool currentDoorSensorState) {
     unsigned long currentMillis = millis(); 
 
-    // A. KILIT KAPATMA MANTIGI
+    // A. KILIT KAPATMA MANTIGI (Geliştirilmiş)
     if (isUnlocked) {
-        if (currentMillis - unlockTimer >= UNLOCK_DURATION) {
-            // ACTIVE LOW ROLE: HIGH gondererek enerjiyi kesiyoruz (kilitliyoruz)
-            digitalWrite(relayPin, HIGH); 
+        // Şart 1: Süre dolduysa VEYA Şart 2: Kapı fiziksel olarak açıldıysa enerjiyi HEMEN kes
+        if ((currentMillis - unlockTimer >= UNLOCK_DURATION) || currentDoorSensorState == true) {
+            digitalWrite(relayPin, HIGH); // Enerjiyi kes
             isUnlocked = false;
             
             isCoolingDown = true;
