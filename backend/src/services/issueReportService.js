@@ -4,13 +4,15 @@ const prisma = require('../config/prisma');
 /**
  * 1. QR kod ile gelen yeni bir arıza bildirimini kaydeder.
  */
-async function createIssueReport({ reportedBy = "Anonim", issueType, description }) {
+async function createIssueReport({ reportedBy = "Anonim", issueType, description, photoName = null, photoData = null }) {
   try {
     const newReport = await prisma.arizaBildirimi.create({
       data: {
         bildiren: reportedBy,
         arizaTuru: issueType,
         aciklama: description,
+        fotografAdi: photoName,
+        fotografVerisi: photoData,
         durum: "OPEN"
       }
     });

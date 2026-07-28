@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
-const { authenticateToken, requireAdminOrHoca } = require('../middlewares/authMiddleware');
+const { authenticateToken, requireAdmin, requireAdminOrHoca } = require('../middlewares/authMiddleware');
 router.use(authenticateToken, requireAdminOrHoca);
 
 // Tüm cihaz-kapı atamalarını veritabanından getir
@@ -42,7 +42,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Yeni cihaz-kapı ataması oluştur
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
     try {
         const { cihazId, kapiId, baslangic } = req.body;
 
@@ -70,7 +70,7 @@ router.post('/', async (req, res) => {
 });
 
 // Atamayı güncelle (örn. bitis tarihi girerek atamayı kapatma)
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { bitis } = req.body;
@@ -94,7 +94,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Atamayı sil
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
 

@@ -1,220 +1,192 @@
-// backend/src/services/pinService.js
-
 const crypto = require('crypto');
-const bcrypt = require('bcrypt');
+const argon2 = require('argon2');
 const prisma = require('../config/prisma');
+const mqttService = require('./mqttService');
 
-/**
- * Kişiye özel 6 haneli rastgele PIN üretir.
- */
 function generateRandomPin() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
-/**
- * ESP32'ye (Push yöntemiyle) güncel kullanıcı şifre listesini gönderir.
- */
-async function pushOfflineListToESP32(cihazId, userPinList) {
-  const mqttService = require('./mqttService');
-  try {
-    console.log(`[PUSH] Cihaz ${cihazId} için şifre listesi MQTT ile gönderiliyor... Toplam Kişi: ${userPinList.length}`);
-
-    const gonderildi = mqttService.publishCommand(cihazId, 'sifre-guncelleme', {
-      liste: userPinList,
-    });
-
-    if (!gonderildi) {
-      throw new Error('MQTT broker bağlı değil.');
-    }
-
-    console.log(`[PUSH BAŞARILI] Cihaz ${cihazId} için publish yapıldı.`);
-    return true;
-  } catch (error) {
-    console.error(`[PUSH BAŞARISIZ] Cihaz ${cihazId} için liste gönderilemedi: ${error.message}`);
-    return false;
-  }
+function pushOfflineListToESP32(cihazId, userPinList, replace = true) {
+  return mqttService.publishCommand(cihazId, 'sifre-guncelleme', {
+    komut_tipi: 'PASSWORD_RENEW',
+    yeni_liste: userPinList,
+    replace,
+    zaman: Math.floor(Date.now() / 1000)
+  });
 }
 
-/**
- * Görev 4.3: Belirli bir cihaz için kapıya bağlı yetki kurallarını tarayarak 
- * HMAC-SHA256, gün maskesi ve saat aralıklarıyla offline liste üretir.
- */
-async function generateOfflineListForDevice(cihazId) {
-  try {
-    // 1. Cihazın bağlı olduğu aktif kapıyı bul
-    const cihazAtama = await prisma.cihazKapiAtama.findFirst({
-      where: { cihazId: parseInt(cihazId), bitis: null },
-      include: { kapi: true }
-    });
-
-    if (!cihazAtama) {
-      throw new Error("Bu cihaza atanmış aktif bir kapı bulunamadı.");
-    }
-
-    const kapiId = cihazAtama.kapiId;
-
-    // 2. İlgili kapıya bağlı YetkiKurali kayıtlarını çek
-    const yetkiKurallari = await prisma.yetkiKurali.findMany({
-      where: {
-        kapiId: kapiId,
-        durum: 'aktif'
+async function getEligibleUsersForDoor(kapiId) {
+  const rules = await prisma.yetkiKurali.findMany({
+    where: { kapiId, aktif: true },
+    include: {
+      kullanici: {
+        include: {
+          kartYetkilendirmeler: { where: { durum: 'aktif' }, take: 1 }
+        }
       },
-      include: {
-        kullanici: {
-          include: {
-            kartYetkilendirmeler: {
-              where: { durum: 'aktif' }
+      grup: {
+        include: {
+          uyeler: {
+            include: {
+              kullanici: {
+                include: {
+                  kartYetkilendirmeler: { where: { durum: 'aktif' }, take: 1 }
+                }
+              }
             }
           }
         }
       }
-    });
+    }
+  });
 
-    // 3. Yeni bir OfflineListeSurumu kaydı oluştur
-    const yeniSurum = await prisma.offlineListeSurumu.create({
-      data: {
-        cihazId: parseInt(cihazId),
+  if (!rules.length) {
+    const users = await prisma.kullanici.findMany({
+      where: { durum: 'aktif', pinHash: { not: null } },
+      include: {
+        kartYetkilendirmeler: { where: { durum: 'aktif' }, take: 1 }
       }
     });
+    return users.map((user) => ({
+      user,
+      rule: { gunMaskesi: 127, saatBaslangic: '00:00', saatBitis: '23:59' }
+    }));
+  }
 
-    const cihazGizliAnahtari = process.env.ESP32_SECRET_KEY || 'gizli-cihaz-anahtari';
-    const userPinListForESP = [];
-    const eklenenUyeler = [];
-
-    // 4. Her kural için kullanıcı, kartUid, pinHmac, gün maskesi ve saat aralığını hesapla
-    for (const kural of yetkiKurallari) {
-      const kullanici = kural.kullanici;
-      if (!kullanici || kullanici.durum !== 'aktif') continue;
-
-      // Kullanıcının aktif kartını al
-      const aktifKart = kullanici.kartYetkilendirmeler[0];
-      const kartUid = aktifKart ? aktifKart.kartUid : null;
-
-      let pinHmac = null;
-      let hamPin = null;
-
-      if (kullanici.pinHash) {
-        hamPin = generateRandomPin(); 
-        pinHmac = crypto
-          .createHmac('sha256', cihazGizliAnahtari)
-          .update(kullanici.pinHash)
-          .digest('hex');
-      }
-
-      const gunMaskesi = kural.gunMaskesi || 127;
-      const baslangicSaati = kural.baslangicSaati || "00:00";
-      const bitisSaati = kural.bitisSaati || "23:59";
-
-      const uye = await prisma.offlineListeUyesi.create({
-        data: {
-          surumId: yeniSurum.surumId,
-          kullaniciId: kullanici.kullaniciId,
-          kartUid: kartUid,
-          pinHmac: pinHmac,
-          gunMaskesi: gunMaskesi,
-          baslangicSaati: baslangicSaati,
-          bitisSaati: bitisSaati
-        }
-      });
-
-      eklenenUyeler.push(uye);
-      if (hamPin) {
-        userPinListForESP.push({ u: kullanici.kullaniciId.toString(), p: hamPin });
+  const members = new Map();
+  for (const rule of rules) {
+    if (rule.kullanici?.durum === 'aktif') {
+      members.set(rule.kullanici.kullaniciId.toString(), { user: rule.kullanici, rule });
+    }
+    for (const membership of rule.grup?.uyeler || []) {
+      if (membership.kullanici?.durum === 'aktif') {
+        members.set(membership.kullanici.kullaniciId.toString(), {
+          user: membership.kullanici,
+          rule
+        });
       }
     }
-
-    // 5. Oluşan listeyi ESP32'ye push et
-    await pushOfflineListToESP32(cihazId, userPinListForESP);
-
-    return {
-      surumId: yeniSurum.surumId.toString(),
-      toplamUye: eklenenUyeler.length,
-      uyeler: eklenenUyeler
-    };
-
-  } catch (error) {
-    console.error(`❌ Offline liste üretilemedi (Cihaz ID: ${cihazId}):`, error.message);
-    throw error;
   }
+  return [...members.values()];
 }
 
-/**
- * Görev 4.4 / Cron Job: Tüm aktif kullanıcıların PIN'lerini DB'de yeniler 
- * ve cihazlar için offline listeyi tekrar oluşturur.
- */
+async function generateOfflineListForDevice(cihazId, rawPinsByUserId = new Map(), replace = true) {
+  const deviceId = Number.parseInt(cihazId, 10);
+  const assignment = await prisma.cihazKapiAtama.findFirst({
+    where: { cihazId: deviceId, bitis: null }
+  });
+  if (!assignment) throw new Error('Bu cihaza atanmış aktif bir kapı bulunamadı.');
+
+  const eligibleUsers = await getEligibleUsersForDoor(assignment.kapiId);
+  const deviceSecret = process.env.ESP32_SECRET_KEY || 'securelab-device-development-key';
+  const expiresAt = new Date(Date.now() + 26 * 60 * 60 * 1000);
+  const list = [];
+
+  for (const { user, rule } of eligibleUsers) {
+    const userId = user.kullaniciId.toString();
+    const rawPin = rawPinsByUserId.get(userId);
+    if (!rawPin) continue;
+    const pinHmac = crypto.createHmac('sha256', deviceSecret).update(rawPin).digest('hex');
+
+    list.push({
+      u: userId,
+      p: pinHmac,
+      kartUid: user.kartYetkilendirmeler?.[0]?.kartUid || null,
+      gunMaskesi: rule.gunMaskesi || 127,
+      saatBaslangic: rule.saatBaslangic || '00:00',
+      saatBitis: rule.saatBitis || '23:59'
+    });
+  }
+
+  const version = await prisma.offlineListeSurumu.create({
+    data: {
+      cihazId: deviceId,
+      gecerlilikBitis: expiresAt,
+      uyeler: {
+        create: list.map((entry) => ({
+          kullaniciId: BigInt(entry.u),
+          kartUid: entry.kartUid,
+          pinHmac: entry.p,
+          gunMaskesi: entry.gunMaskesi,
+          saatBaslangic: entry.saatBaslangic,
+          saatBitis: entry.saatBitis
+        }))
+      }
+    },
+    include: { uyeler: true }
+  });
+
+  const published = pushOfflineListToESP32(deviceId, list, replace);
+  return {
+    surumId: version.surumId.toString(),
+    toplamUye: list.length,
+    mqttGonderildi: published,
+    gecerlilikBitis: expiresAt
+  };
+}
+
 async function refreshAllUsersPins() {
-  try {
-    // 1. Veritabanındaki tüm aktif kullanıcıları getir
-    const aktifKullanicilar = await prisma.kullanici.findMany({
-      where: { durum: 'aktif' }
-    });
+  const users = await prisma.kullanici.findMany({ where: { durum: 'aktif' } });
+  const rawPinsByUserId = new Map();
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    console.log(`[CRON] ${aktifKullanicilar.length} aktif kullanıcının PIN'i güncelleniyor...`);
-
-    // 2. Her kullanıcı için yeni PIN üret ve bcrypt ile hash'leyip DB'de güncelle
-    for (const kullanici of aktifKullanicilar) {
-      const newPin = generateRandomPin();
-      const hashedPin = await bcrypt.hash(newPin, 10);
-
-      await prisma.kullanici.update({
-        where: { kullaniciId: kullanici.kullaniciId },
-        data: {
-          pinHash: hashedPin,
-          pinSonDegisim: new Date()
-        }
-      });
-    }
-
-    // 3. Aktif cihazların listesini çekip her biri için yeni offline sürümleri üret
-    const aktifCihazlar = await prisma.cihaz.findMany({
-      where: { durum: 'aktif' }
-    });
-
-    for (const cihaz of aktifCihazlar) {
-      await generateOfflineListForDevice(cihaz.cihazId);
-    }
-
-    return true;
-  } catch (error) {
-    console.error('❌ Toplu PIN yenileme sırasında hata oluştu:', error.message);
-    return false;
-  }
-}
-
-/**
- * Tek bir kullanıcının PIN'ini isteğe bağlı (Manuel/Web UI) yeniler.
- */
-async function refreshSingleUserPin(kullaniciId) {
-  try {
-    const newPin = generateRandomPin();
-    const hashedPin = await bcrypt.hash(newPin, 10);
-
-    const guncelKullanici = await prisma.kullanici.update({
-      where: { kullaniciId: BigInt(kullaniciId) },
+  for (const user of users) {
+    const pin = generateRandomPin();
+    rawPinsByUserId.set(user.kullaniciId.toString(), pin);
+    await prisma.kullanici.update({
+      where: { kullaniciId: user.kullaniciId },
       data: {
-        pinHash: hashedPin,
-        pinSonDegisim: new Date()
+        pinHash: await argon2.hash(pin),
+        pinSonDegisim: new Date(),
+        pinGecerlilikBitis: expiresAt
       }
     });
-
-    // İlgili cihazları bulup offline listelerini güncelle
-    const aktifCihazlar = await prisma.cihaz.findMany({ where: { durum: 'aktif' } });
-    for (const cihaz of aktifCihazlar) {
-      await generateOfflineListForDevice(cihaz.cihazId);
-    }
-
-    return {
-      kullaniciId: guncelKullanici.kullaniciId.toString(),
-      yeniPin: newPin // İsteğe bağlı yanıt ekranında göstermek için
-    };
-  } catch (error) {
-    console.error(`❌ Kullanıcı PIN yenileme hatası (ID: ${kullaniciId}):`, error.message);
-    throw error;
   }
+
+  const devices = await prisma.cihaz.findMany({ where: { durum: 'aktif' } });
+  const results = [];
+  for (const device of devices) {
+    results.push(await generateOfflineListForDevice(device.cihazId, rawPinsByUserId, true));
+  }
+  return results;
 }
 
-module.exports = { 
-  generateRandomPin, 
+async function refreshSingleUserPin(kullaniciId) {
+  const userId = BigInt(kullaniciId);
+  const existingUser = await prisma.kullanici.findUnique({ where: { kullaniciId: userId } });
+  if (!existingUser || existingUser.durum !== 'aktif') {
+    throw new Error('Aktif kullanıcı bulunamadı.');
+  }
+
+  const newPin = generateRandomPin();
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await prisma.kullanici.update({
+    where: { kullaniciId: userId },
+    data: {
+      pinHash: await argon2.hash(newPin),
+      pinSonDegisim: new Date(),
+      pinGecerlilikBitis: expiresAt
+    }
+  });
+
+  const devices = await prisma.cihaz.findMany({ where: { durum: 'aktif' } });
+  const rawPinsByUserId = new Map([[userId.toString(), newPin]]);
+  const deviceResults = [];
+  for (const device of devices) {
+    deviceResults.push(await generateOfflineListForDevice(device.cihazId, rawPinsByUserId, false));
+  }
+
+  return {
+    kullaniciId: userId.toString(),
+    yeniPin: newPin,
+    gecerlilikBitis: expiresAt,
+    cihazlar: deviceResults
+  };
+}
+
+module.exports = {
+  generateRandomPin,
   pushOfflineListToESP32,
   generateOfflineListForDevice,
   refreshAllUsersPins,

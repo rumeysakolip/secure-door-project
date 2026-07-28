@@ -69,6 +69,7 @@ web_modules/
 .env
 .env.*
 !.env.example
+esp32-kodlar/include/config.local.h
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

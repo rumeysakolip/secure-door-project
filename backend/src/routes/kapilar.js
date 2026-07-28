@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
 const remoteDoorService = require('../services/remoteDoorService');
-const { authenticateToken, requireAdminOrHoca } = require('../middlewares/authMiddleware');
+const { authenticateToken, requireAdmin, requireAdminOrHoca } = require('../middlewares/authMiddleware');
 router.use(authenticateToken, requireAdminOrHoca);
 // Tüm kapıları veritabanından getir
 router.get('/', async (req, res) => {
@@ -16,12 +16,12 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/kapilar/:id/ac - Uzaktan Kapı Açma Endpoint'i
-router.post('/:id/ac', async (req, res) => {
+router.post('/:id/ac', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
-        const { adminId, reason } = req.body;
+        const { reason } = req.body;
 
-        const result = await remoteDoorService.triggerRemoteDoorOpen(id, adminId, reason);
+        const result = await remoteDoorService.triggerRemoteDoorOpen(id, req.user.kullaniciId, reason);
 
         if (result.success) {
             return res.json(result);
@@ -50,7 +50,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Yeni kapı ekle
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
     try {
         const { ad, bina, kat, aciklama, durum } = req.body;
 
@@ -76,7 +76,7 @@ router.post('/', async (req, res) => {
 });
 
 // Kapı bilgilerini güncelle
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { ad, bina, kat, aciklama, durum } = req.body;
@@ -103,7 +103,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Kapıyı sil
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
 

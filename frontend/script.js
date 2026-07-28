@@ -1,5 +1,5 @@
 const API_CONFIG = Object.freeze({
-    baseUrl: 'http://localhost:3000',
+    baseUrl: '',
     // Geliştirme fallback'i gerekirse true yapılabilir; üretimde sahte veri gösterilmez.
     useMockData: false
 });
@@ -9,6 +9,7 @@ const appState = {
     currentUser: null,
     kullanicilar: [],
     kartlar: [],
+    kapilar: [],
     yetkilendirmeler: []
 };
 
@@ -368,7 +369,8 @@ async function requireAuthentication() {
     }
 
     try {
-        await getCurrentUser();
+        const user = await getCurrentUser();
+        if (!enforceRoleAccess(user)) return false;
         revealAuthenticatedPage();
         return true;
     } catch (error) {
@@ -385,6 +387,33 @@ function getRoleDestination(role) {
         sistem: 'index.html'
     };
     return destinations[role] || null;
+}
+
+function enforceRoleAccess(user) {
+    const role = user?.rol || '';
+    const allowedRoles = String(document.body.dataset.roles || '')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+    document.querySelectorAll('a[href="admin.html"]').forEach((link) => {
+        if (role !== 'admin') link.hidden = true;
+    });
+
+    document.querySelectorAll('.sidebar-meta-row').forEach((meta) => {
+        const name = `${user?.ad || ''} ${user?.soyad || ''}`.trim();
+        const strong = meta.querySelector('strong');
+        const small = meta.querySelector('small');
+        if (strong && name) strong.textContent = name;
+        if (small) small.textContent = humanizeEnum(role);
+    });
+
+    if (allowedRoles.length && !allowedRoles.includes(role)) {
+        const destination = getRoleDestination(role) || 'login.html';
+        window.location.replace(`${destination}?yetki=reddedildi`);
+        return false;
+    }
+    return true;
 }
 
 async function initLogin() {
@@ -412,9 +441,33 @@ async function initLogin() {
         }
     }
 
-    forgotButton?.setAttribute('title', 'Backend şifre sıfırlama endpointi bulunmuyor');
-    forgotButton?.addEventListener('click', () => {
-        setInlineMessage(message, 'Şifre sıfırlama endpointi backend’de bulunmuyor.', 'warning');
+    forgotButton?.addEventListener('click', async () => {
+        const eposta = emailInput.value.trim();
+        if (!eposta) {
+            setInlineMessage(message, 'Önce e-posta adresinizi yazın.', 'error');
+            emailInput.focus();
+            return;
+        }
+
+        forgotButton.disabled = true;
+        setInlineMessage(message, 'Yeni giriş şifresi oluşturuluyor…', 'info');
+        try {
+            const response = await apiRequest('/api/auth/forgot-password', {
+                method: 'POST',
+                body: { eposta }
+            });
+            setInlineMessage(
+                message,
+                response?.temporaryPin
+                    ? `Yeni giriş şifreniz: ${response.temporaryPin}`
+                    : (response?.message || 'Sıfırlama isteği alındı.'),
+                'success'
+            );
+        } catch (error) {
+            setInlineMessage(message, handleApiError(error), 'error');
+        } finally {
+            forgotButton.disabled = false;
+        }
     });
 
     passwordToggle?.addEventListener('click', () => {
@@ -463,6 +516,10 @@ async function initLogin() {
 
 async function getKullanicilar() {
     return apiRequest('/api/kullanicilar');
+}
+
+async function getKullaniciOzeti() {
+    return apiRequest('/api/kullanicilar/ozet');
 }
 
 function renderKullanicilar(data) {
@@ -516,6 +573,7 @@ async function getKapilar() {
 
 function renderKapilar(data) {
     const doors = Array.isArray(data) ? data : [];
+    appState.kapilar = doors;
     const activeDoors = doors.filter((door) => door.durum === 'aktif');
     setText('admin-door-count', String(doors.length));
     setText('admin-door-state', doors.length ? `${activeDoors.length} aktif` : 'Kayıt yok');
@@ -780,37 +838,62 @@ async function initAdminPage() {
         setText('admin-system-state', 'Sistem verileri güncel');
         setText('admin-infra-state', 'Canlı API');
     }
+
+    const remoteDoorButton = document.getElementById('remote-door-button');
+    if (remoteDoorButton) {
+        remoteDoorButton.disabled = !appState.kapilar.length;
+        remoteDoorButton.addEventListener('click', async () => {
+            const door = appState.kapilar.find((item) => item.durum === 'aktif') || appState.kapilar[0];
+            const message = document.getElementById('remote-door-message');
+            if (!door) return;
+            if (!window.confirm(`${door.ad} uzaktan açılsın mı?`)) return;
+            remoteDoorButton.disabled = true;
+            setInlineMessage(message, 'Kapı açma komutu gönderiliyor…', 'info');
+            try {
+                const response = await apiRequest(`/api/kapilar/${encodeURIComponent(door.kapiId)}/ac`, {
+                    method: 'POST',
+                    body: { reason: 'Yönetim paneli manuel açma işlemi' }
+                });
+                setInlineMessage(message, response?.message || 'Kapı açma komutu gönderildi.', 'success');
+            } catch (error) {
+                setInlineMessage(message, handleApiError(error), 'error');
+            } finally {
+                remoteDoorButton.disabled = false;
+            }
+        });
+    }
 }
 
 async function initDashboardPage() {
     const tableBody = document.querySelector('#dashboard-access-table tbody');
     showLoading(tableBody);
 
-    try {
-        const [users, doors, devices, statuses, records] = await Promise.all([
-            getKullanicilar(),
-            getKapilar(),
-            getCihazlar(),
-            getCihazDurumlari(),
-            getErisimKayitlari(20, 0)
-        ]);
+    const requests = [
+        ['users', getKullaniciOzeti(), (summary) => {
+            const totalUsers = Number(summary?.toplam || 0);
+            const activeUsers = Number(summary?.aktif || 0);
+            setText('dashboard-user-value', String(activeUsers));
+            setText('dashboard-user-detail', `${totalUsers} kullanıcıdan ${activeUsers} tanesi aktif`);
+        }],
+        ['doors', getKapilar(), renderKapilar],
+        ['devices', getCihazlar(), renderCihazlar],
+        ['statuses', getCihazDurumlari(), renderCihazDurumlari],
+        ['records', getErisimKayitlari(20, 0), (records) => {
+            renderAccessMetrics(records);
+            renderAccessTable('dashboard-access-table', records, false);
+        }]
+    ];
+    const results = await Promise.allSettled(requests.map(([, request]) => request));
+    const failures = [];
+    results.forEach((result, index) => {
+        const [name, , render] = requests[index];
+        if (result.status === 'fulfilled') render(result.value);
+        else failures.push(name);
+    });
 
-        appState.kullanicilar = Array.isArray(users) ? users : [];
-        const activeUsers = appState.kullanicilar.filter((user) => user.durum === 'aktif');
-        setText('dashboard-user-value', String(activeUsers.length));
-        setText('dashboard-user-detail', `${appState.kullanicilar.length} kullanıcıdan ${activeUsers.length} tanesi aktif`);
-        renderKapilar(doors);
-        renderCihazlar(devices);
-        renderCihazDurumlari(statuses);
-        renderAccessMetrics(records);
-        renderAccessTable('dashboard-access-table', records, false);
-        setText('dashboard-system-state', 'Sistem verileri güncel');
-        setText('dashboard-infra-state', 'Canlı API');
-    } catch (error) {
-        showError(tableBody, handleApiError(error));
-        setText('dashboard-system-state', 'Backend bağlantı hatası');
-        setText('dashboard-infra-state', 'Veri alınamadı');
-    }
+    if (failures.includes('records')) showError(tableBody, 'Erişim kayıtları yüklenemedi.');
+    setText('dashboard-system-state', failures.length ? 'Bazı veriler alınamadı' : 'Sistem verileri güncel');
+    setText('dashboard-infra-state', failures.length ? 'Kısmi bağlantı' : 'Canlı API');
 }
 
 async function initAuthorizationPage() {
@@ -820,6 +903,7 @@ async function initAuthorizationPage() {
     const userSelect = document.getElementById('auth-full-name');
     const roleSelect = document.getElementById('auth-role');
     const rfidInput = document.getElementById('rfidInput');
+    const fetchCardButton = document.getElementById('fetch-card-button');
 
     showLoading(tableBody);
     try {
@@ -842,6 +926,8 @@ async function initAuthorizationPage() {
         const user = appState.kullanicilar.find((item) => String(item.kullaniciId) === userSelect.value);
         if (roleSelect) roleSelect.value = user?.rol || '';
     });
+    fetchCardButton?.addEventListener('click', fetchCardId);
+    loadLatestCardSummary();
 
     form?.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -906,9 +992,44 @@ async function initAuthorizationPage() {
     });
 }
 
-function fetchCardId() {
+async function loadLatestCardSummary() {
+    try {
+        const latest = await apiRequest('/api/kartlar/son-okutulan');
+        setText('latest-card-uid', latest?.okunanUid || '—');
+        setText('latest-card-state', latest?.okunanUid ? 'Hazır' : 'Bekliyor');
+        setText('latest-card-detail', latest?.olayTamani
+            ? `Son okuma: ${formatDateTime(latest.olayTamani)}`
+            : 'Henüz kart okutulmadı');
+    } catch (error) {
+        setText('latest-card-uid', '—');
+        setText('latest-card-state', 'Bağlantı yok');
+        setText('latest-card-detail', handleApiError(error));
+    }
+}
+
+async function fetchCardId() {
     const message = document.getElementById('authorization-message');
-    setInlineMessage(message, 'Son okutulan kartı döndüren bir backend endpointi bulunmuyor. Kayıtlı UID’yi elle seçin.', 'warning');
+    const input = document.getElementById('rfidInput');
+    const button = document.getElementById('fetch-card-button');
+    if (!input || !button) return;
+
+    button.disabled = true;
+    setInlineMessage(message, 'Son okutulan kart alınıyor…', 'info');
+    try {
+        const latest = await apiRequest('/api/kartlar/son-okutulan');
+        if (!latest?.okunanUid) throw new ApiError('Okutulmuş kart bulunamadı.');
+        input.value = latest.okunanUid;
+        setText('latest-card-uid', latest.okunanUid);
+        setText('latest-card-state', 'Hazır');
+        setText('latest-card-detail', latest?.olayTamani
+            ? `Son okuma: ${formatDateTime(latest.olayTamani)}`
+            : 'Kart okuyucudan alındı');
+        setInlineMessage(message, `Son okutulan kart yüklendi: ${latest.okunanUid}`, 'success');
+    } catch (error) {
+        setInlineMessage(message, handleApiError(error), 'error');
+    } finally {
+        button.disabled = false;
+    }
 }
 
 async function renewCode() {
@@ -1006,12 +1127,38 @@ function renderArizalar(data) {
             createElement('span', 'cell-secondary', record.aciklama || 'Açıklama yok'),
             createElement('span', 'cell-secondary', record.bildiren ? `Bildiren: ${record.bildiren}` : 'Bildiren: Anonim')
         );
-        const photoCell = createElement('td', 'cell-secondary', 'Fotoğraf API’de desteklenmiyor');
+        const photoCell = document.createElement('td');
+        if (record.fotografVerisi) {
+            const link = createElement('a', 'section-link', record.fotografAdi || 'Görüntüle');
+            link.href = record.fotografVerisi;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            photoCell.appendChild(link);
+        } else {
+            photoCell.className = 'cell-secondary';
+            photoCell.textContent = 'Ek yok';
+        }
         const statusCell = document.createElement('td');
         const variant = record.durum === 'RESOLVED'
             ? 'success'
             : record.durum === 'IN_PROGRESS' ? 'warning' : 'danger';
-        statusCell.appendChild(createBadge(humanizeEnum(record.durum), variant));
+        if (appState.currentUser?.rol === 'admin') {
+            const select = createElement('select', 'status-select');
+            select.dataset.issueId = String(record.arizaId);
+            [
+                ['OPEN', 'Açık'],
+                ['IN_PROGRESS', 'İnceleniyor'],
+                ['RESOLVED', 'Çözüldü']
+            ].forEach(([value, label]) => {
+                const option = createElement('option', '', label);
+                option.value = value;
+                option.selected = value === record.durum;
+                select.appendChild(option);
+            });
+            statusCell.appendChild(select);
+        } else {
+            statusCell.appendChild(createBadge(humanizeEnum(record.durum), variant));
+        }
         row.append(dateCell, descriptionCell, photoCell, statusCell);
         fragment.appendChild(row);
     });
@@ -1034,6 +1181,24 @@ async function initIssueHistoryPage() {
         setText('fault-system-state', 'Arıza servisine ulaşılamadı');
         setInlineMessage(status, handleApiError(error), 'error');
     }
+
+    tableBody?.addEventListener('change', async (event) => {
+        const select = event.target.closest('[data-issue-id]');
+        if (!select) return;
+        select.disabled = true;
+        setInlineMessage(status, 'Arıza durumu güncelleniyor…', 'info');
+        try {
+            await apiRequest(`/api/arizalar/${encodeURIComponent(select.dataset.issueId)}`, {
+                method: 'PATCH',
+                body: { status: select.value }
+            });
+            renderArizalar(await getArizalar());
+            setInlineMessage(status, 'Arıza durumu güncellendi.', 'success');
+        } catch (error) {
+            select.disabled = false;
+            setInlineMessage(status, handleApiError(error), 'error');
+        }
+    });
 }
 
 function updateFileName(input) {
@@ -1045,13 +1210,7 @@ function initIssueReportPage() {
     const form = document.getElementById('issue-report-form');
     const message = document.getElementById('issue-report-message');
     const submitButton = document.getElementById('issue-report-submit');
-    setInlineMessage(message, 'Metin bildirimi backend’e gönderilebilir. Fotoğraf yükleme API tarafından desteklenmiyor.', 'info');
-    document.getElementById('filePicker')?.setAttribute('disabled', '');
-    document.getElementById('cameraInput')?.setAttribute('disabled', '');
-    document.querySelectorAll('label[for="filePicker"], label[for="cameraInput"]').forEach((label) => {
-        label.setAttribute('aria-disabled', 'true');
-        label.title = 'Fotoğraf yükleme endpointi bulunmuyor';
-    });
+    setInlineMessage(message, 'Bildirim metni ve isteğe bağlı fotoğraf güvenli biçimde gönderilir.', 'info');
     if (submitButton) submitButton.disabled = false;
 
     form?.addEventListener('submit', async (event) => {
@@ -1060,6 +1219,9 @@ function initIssueReportPage() {
         const emailUser = document.getElementById('report-email').value.trim();
         const issueType = document.getElementById('report-issue-type').value;
         const description = document.getElementById('report-description').value.trim();
+        const photoFile = document.getElementById('filePicker').files?.[0]
+            || document.getElementById('cameraInput').files?.[0]
+            || null;
 
         if (!fullName || !emailUser || !issueType || !description) {
             setInlineMessage(message, 'Ad soyad, e-posta, arıza türü ve açıklama alanları zorunludur.', 'error');
@@ -1073,12 +1235,18 @@ function initIssueReportPage() {
         setInlineMessage(message, 'Arıza bildirimi kaydediliyor…', 'info');
 
         try {
+            if (photoFile && photoFile.size > 2_500_000) {
+                throw new ApiError('Fotoğraf en fazla 2,5 MB olabilir.');
+            }
+            const photoData = photoFile ? await readFileAsDataUrl(photoFile) : null;
             const response = await apiRequest('/api/arizalar', {
                 method: 'POST',
                 body: {
                     reportedBy: `${fullName} (${reportedEmail})`.slice(0, 128),
                     issueType,
-                    description
+                    description,
+                    photoName: photoFile?.name || null,
+                    photoData
                 }
             });
             if (!response?.success || !response?.report?.arizaId) {
@@ -1092,6 +1260,15 @@ function initIssueReportPage() {
             submitButton.disabled = false;
             submitButton.replaceChildren(...originalContent);
         }
+    });
+}
+
+function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => reject(new ApiError('Fotoğraf okunamadı.'));
+        reader.readAsDataURL(file);
     });
 }
 

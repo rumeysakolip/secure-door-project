@@ -1,8 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
-const { authenticateToken, requireAdminOrHoca } = require('../middlewares/authMiddleware');
+const { authenticateToken, requireAdmin, requireAdminOrHoca } = require('../middlewares/authMiddleware');
 router.use(authenticateToken, requireAdminOrHoca);
+const safeUserSelect = {
+    kullaniciId: true,
+    ad: true,
+    soyad: true,
+    eposta: true,
+    rol: true,
+    durum: true
+};
 // Grupları, üye sayılarıyla birlikte listele
 router.get('/', async (req, res) => {
     try {
@@ -46,7 +54,7 @@ router.get('/:id', async (req, res) => {
             include: {
                 uyeler: {
                     include: {
-                        kullanici: true
+                        kullanici: { select: safeUserSelect }
                     }
                 }
             }
@@ -61,7 +69,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Yeni grup oluştur
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
     try {
         const { ad, aciklama, aktif } = req.body;
 
@@ -85,7 +93,7 @@ router.post('/', async (req, res) => {
 });
 
 // Grubu güncelle
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const grupId = parseInt(id);
@@ -115,7 +123,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Grubu sil
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const grupId = parseInt(id);
@@ -139,7 +147,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // Gruba üye (kullanıcı) ekle
-router.post('/:id/uyeler', async (req, res) => {
+router.post('/:id/uyeler', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const grupId = parseInt(id);
@@ -154,7 +162,7 @@ router.post('/:id/uyeler', async (req, res) => {
                 grupId,
                 kullaniciId: parseInt(kullaniciId)
             },
-            include: { kullanici: true, grup: true }
+            include: { kullanici: { select: safeUserSelect }, grup: true }
         });
 
         res.status(201).json(uyelik);
@@ -171,7 +179,7 @@ router.post('/:id/uyeler', async (req, res) => {
 });
 
 // Gruptan üye (kullanıcı) çıkar
-router.delete('/:id/uyeler/:kullaniciId', async (req, res) => {
+router.delete('/:id/uyeler/:kullaniciId', requireAdmin, async (req, res) => {
     try {
         const { id, kullaniciId } = req.params;
         const grupId = parseInt(id);

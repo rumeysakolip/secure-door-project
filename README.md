@@ -1,67 +1,69 @@
-# Secure Door Project - Kart Okuyuculu Güvenlikli Kapı Sistemi
+# SecureLab Erişim Yönetim Sistemi
 
-Kart okuyuculu güvenlikli kapı sistemi projesi. Docker Compose kullanılarak PostgreSQL, Node.js backend ve statik frontend ile geliştirilmiştir.
+RFID kart, geçici PIN, kapı cihazları ve erişim kayıtlarını tek panelden yöneten Docker tabanlı uygulama.
 
-## Kurulum
+## Hızlı başlangıç
 
-Projeyi başlatmak için aşağıdaki komutu çalıştırın:
+1. Ortam dosyasını oluşturun:
 
-```bash
-docker compose up --build
-```
+   ```powershell
+   Copy-Item .env.example .env
+   ```
 
-Bu komut PostgreSQL veritabanı, backend ve frontend servislerini otomatik olarak oluşturup başlatacaktır.
+2. `.env` içindeki geliştirme anahtarlarını ve başlangıç parolalarını kontrol edin.
+3. Sistemi başlatın:
 
-### Erişim Adresleri
-- **Frontend**: http://localhost:8080
-- **Backend**: http://localhost:3000
-- **Veritabanı**: localhost:5432
+   ```powershell
+   docker compose up -d --build
+   ```
 
-### Ortam Değişkenleri
-`.env.example` dosyasını `.env` olarak kopyalayın ve gerekli değerleri güncelleyin.
+4. Tarayıcıdan `http://localhost:8080` adresini açın.
 
+Frontend aynı adres üzerindeki `/api` yolunu backend servisine yönlendirir. Backend sağlık adresi ayrıca `http://localhost:3000/api/health` üzerinden kullanılabilir.
 
-## Docker ile Hızlı Başlangıç
+## Geliştirme kullanıcıları
 
-Projeyi bilgisayarınıza klonlayın:
+İlk çalıştırmada aşağıdaki hesaplar oluşturulur:
 
-```bash
-git clone https://github.com/rumeysakolip/secure-door-project.git
-cd secure-door-project
-```
+| Rol | E-posta | Varsayılan parola |
+|---|---|---|
+| Yönetici | `admin@subu.edu.tr` | `123456` |
+| Öğretim görevlisi | `ahmet@subu.edu.tr` | `123456` |
 
-Ortam değişkenleri dosyasını oluşturun:
+Parolalar `.env` içindeki `SEED_ADMIN_PASSWORD` ve `SEED_HOCA_PASSWORD` değerleriyle değiştirilebilir. Üretim ortamında varsayılan parola ve anahtarları mutlaka değiştirin.
 
-```bash
-cp .env.example .env
-```
-
-Windows PowerShell kullanıyorsanız:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-Projeyi Docker ile başlatın:
-
-```bash
-docker compose up --build
-```
-
-Servislere aşağıdaki adreslerden erişebilirsiniz:
+## Servisler
 
 - Frontend: `http://localhost:8080`
 - Backend: `http://localhost:3000`
 - PostgreSQL: `localhost:5432`
+- MQTT: `localhost:1883`
 
-Projeyi durdurmak için:
+Servis durumunu görmek için:
 
-```bash
+```powershell
+docker compose ps
+```
+
+Sistemi durdurmak için:
+
+```powershell
 docker compose down
 ```
 
-Veritabanı verileri Docker volume içerisinde kalıcı olarak saklanır. Verileri de tamamen silmek için:
+## ESP32 yapılandırması
 
-```bash
-docker compose down -v
-```
+1. `esp32-kodlar/include/config.local.example.h` dosyasını `config.local.h` adıyla kopyalayın.
+2. Wi-Fi, backend IP adresi, MQTT adresi, cihaz/kapı kimlikleri ve pinleri kendi donanımınıza göre düzenleyin.
+3. `ESP32_SECRET_KEY` değeri `.env` içindeki `DEVICE_SECRET` ile aynı olmalıdır.
+4. PlatformIO ile `esp32-kodlar` klasörünü derleyip karta yükleyin.
+
+`config.local.h` gizli bilgiler içerdiği için Git tarafından izlenmez.
+
+## Güvenlik ve roller
+
+- Yönetici kullanıcı, kart yetkilendirme ve uzaktan kapı açma işlemlerini yapabilir.
+- Öğretim görevlisi sistem durumunu, geçmiş kayıtları ve kendi geçici PIN işlemini kullanabilir.
+- Korunan bir sayfaya oturumsuz erişim giriş ekranına yönlendirilir.
+- Kapı cihazları web kullanıcı tokenı yerine `X-Device-Key` başlığıyla doğrulanır.
+- Web parolası ve kapı PIN’i ayrı hash alanlarında saklanır.

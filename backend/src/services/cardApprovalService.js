@@ -16,7 +16,7 @@ async function handleUnknownCardScan(kartUid) {
       kart = await prisma.kart.create({
         data: {
           kartUid,
-          durum: 'aktif', // Varsayılan aktif kart kaydı
+          durum: 'onay_bekliyor',
           iptalNedeni: 'Onay Bekliyor'
         }
       });

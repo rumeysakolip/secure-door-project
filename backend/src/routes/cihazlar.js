@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
-const { authenticateToken, requireAdminOrHoca } = require('../middlewares/authMiddleware');
+const { authenticateToken, requireAdmin, requireAdminOrHoca } = require('../middlewares/authMiddleware');
 router.use(authenticateToken, requireAdminOrHoca);
 // Tüm cihazları veritabanından getir
 router.get('/', async (req, res) => {
@@ -32,7 +32,7 @@ router.get('/:id', async (req, res) => {
 const { generateOfflineListForDevice } = require('../services/pinService');
 
 // Görev 4.3: Belirli bir cihaz için offline çalışma listesi üretme endpoint'i
-router.post('/:id/offline-liste-uret', async (req, res) => {
+router.post('/:id/offline-liste-uret', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const sonuc = await generateOfflineListForDevice(id);
@@ -52,7 +52,7 @@ router.post('/:id/offline-liste-uret', async (req, res) => {
 });
 
 // Yeni cihaz ekle
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
     try {
         const { seriNo, durum, kurulumuTarihi } = req.body;
 
@@ -79,7 +79,7 @@ router.post('/', async (req, res) => {
 });
 
 // Cihaz bilgilerini güncelle
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { seriNo, durum } = req.body;
@@ -106,7 +106,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Cihazı sil
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
 

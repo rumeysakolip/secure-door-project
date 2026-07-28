@@ -29,6 +29,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 html {
   min-width: 320px;
   background: var(--bg-page);
@@ -137,6 +141,16 @@ p,
   overflow-y: auto;
   background: var(--bg-sidebar);
   color: #ffffff;
+  transform: translateX(-102%);
+  transition: transform 200ms ease;
+}
+
+.menu-open {
+  overflow: hidden;
+}
+
+.menu-open .navbar {
+  transform: translateX(0);
 }
 
 .brand {
@@ -291,7 +305,7 @@ p,
 .main-panel {
   min-width: 0;
   min-height: 100vh;
-  margin-left: var(--sidebar-width);
+  margin-left: 0;
 }
 
 .topbar {
@@ -347,7 +361,7 @@ p,
 }
 
 .menu-toggle {
-  display: none;
+  display: inline-flex;
   width: 42px;
   height: 42px;
   flex: 0 0 42px;
@@ -367,7 +381,36 @@ p,
 }
 
 .menu-backdrop {
-  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: block;
+  background: rgba(15, 39, 66, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+
+.menu-open .menu-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.floating-menu-toggle {
+  position: fixed;
+  top: 13px;
+  left: 16px;
+  z-index: 45;
+  transition: left 200ms ease;
+}
+
+.floating-menu-toggle + .topbar {
+  padding-left: 76px;
+}
+
+.menu-open .floating-menu-toggle {
+  left: calc(var(--sidebar-width) + 12px);
+  z-index: 70;
 }
 
 .container {
@@ -2031,6 +2074,14 @@ code {
   color: var(--primary);
 }
 
+.metric-value-code {
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: clamp(18px, 2vw, 24px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .form-message-warning {
   border-color: rgba(217, 119, 6, 0.24);
   background: var(--warning-soft);
@@ -2103,4 +2154,20 @@ button.is-loading::after {
 }
 html.auth-pending body {
   visibility: hidden;
+}
+.status-select {
+  min-width: 132px;
+  min-height: 38px;
+  padding: 0 34px 0 12px;
+  border: 1px solid var(--border-color, #d7dfeb);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text-primary, #12213a);
+  font: inherit;
+  font-weight: 700;
+}
+
+.status-select:focus-visible {
+  outline: 3px solid rgba(47, 107, 255, 0.2);
+  border-color: var(--primary, #2f6bff);
 }

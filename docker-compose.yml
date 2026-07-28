@@ -60,6 +60,13 @@ services:
       PORT: 3000
       MQTT_BROKER_HOST: mqtt
       MQTT_BROKER_PORT: 1883
+      JWT_SECRET: ${JWT_SECRET:-securelab-local-jwt-change-this}
+      ESP32_SECRET_KEY: ${ESP32_SECRET_KEY:-securelab-device-development-key}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      ALLOW_DEV_PASSWORD_RESET: ${ALLOW_DEV_PASSWORD_RESET:-true}
+      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Istanbul}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-123456}
+      SEED_TEACHER_PASSWORD: ${SEED_TEACHER_PASSWORD:-123456}
 
     depends_on:
       db:
@@ -68,6 +75,12 @@ services:
         condition: service_started
 
     restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
     volumes:
       - ./backend/src:/app/src
@@ -88,7 +101,8 @@ services:
     restart: unless-stopped
 
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
     networks:
       - kapi-network

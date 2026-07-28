@@ -130,6 +130,11 @@ model Kullanici {
   durum            KullaniciDurum @default(aktif)
   rol              KullaniciRol   @default(hoca)
 
+  // Web paneli parolası ile kapı PIN'i birbirinden ayrıdır. Eski kurulumlarda
+  // sifreHash boş olabilir; giriş servisi geçiş süresince pinHash'e geri düşer.
+  sifreHash          String?   @db.VarChar(255)
+  sifreGecerlilikBitis DateTime? @db.Timestamptz()
+
   // Kişiye özel PIN (argon2 ile hashlenmiş). Düz PIN veritabanında hiç
   // saklanmaz; pinGecerlilikBitis, üretim anında dönen düz PIN'in ne kadar
   // süre "hâlâ geçerli/gösterilebilir" sayılacağını belirtir.
@@ -335,6 +340,8 @@ model ArizaBildirimi {
   bildiren    String   @default("Anonim") @db.VarChar(128)
   arizaTuru   String   @db.VarChar(64)
   aciklama    String   @db.VarChar(512)
+  fotografAdi String?  @db.VarChar(128)
+  fotografVerisi String? @db.Text
   durum       ArizaDurum @default(OPEN)
   olusturulma DateTime @default(now()) @db.Timestamptz()
 

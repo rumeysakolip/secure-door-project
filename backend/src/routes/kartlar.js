@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
 const cardApprovalService = require('../services/cardApprovalService');
-const { authenticateToken, requireAdminOrHoca } = require('../middlewares/authMiddleware');
+const {
+    authenticateToken,
+    authenticateDevice,
+    requireAdmin,
+    requireAdminOrHoca
+} = require('../middlewares/authMiddleware');
 
 // GET /api/kartlar - Tüm kartları listele (durum parametresine göre isteğe bağlı filtreleme)
 router.get('/', authenticateToken, requireAdminOrHoca, async (req, res) => {
@@ -22,7 +27,7 @@ router.get('/', authenticateToken, requireAdminOrHoca, async (req, res) => {
 });
 
 // GET /api/kartlar/onay-bekleyenler - Henüz bir kullanıcıya atanmamış kartları getir
-router.get('/onay-bekleyenler', authenticateToken, requireAdminOrHoca, async (req, res) => {
+router.get('/onay-bekleyenler', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const pendingCards = await cardApprovalService.getPendingCards();
         res.json({ success: true, data: pendingCards });
@@ -34,7 +39,7 @@ router.get('/onay-bekleyenler', authenticateToken, requireAdminOrHoca, async (re
 // POST /api/kartlar/bilinmeyen-okuma - ESP32'den gelen bilinmeyen kart bildirimini işle
 // NOT: Bu endpoint ESP32 cihazı tarafından çağrılıyor, insan girişi değil.
 // Bu yüzden authenticateToken/requireAdminOrHoca eklenmedi, korumasız bırakıldı.
-router.post('/bilinmeyen-okuma', async (req, res) => {
+router.post('/bilinmeyen-okuma', authenticateDevice, async (req, res) => {
     try {
         const { kartUid } = req.body;
         if (!kartUid) {
@@ -49,9 +54,9 @@ router.post('/bilinmeyen-okuma', async (req, res) => {
 });
 
 // POST /api/kartlar/onayla - Yönetici panelinden kartı kullanıcıya ata
-router.post('/onayla', authenticateToken, requireAdminOrHoca, async (req, res) => {
+router.post('/onayla', authenticateToken, requireAdmin, async (req, res) => {
     try {
-        const { kartUid, userId, adminId } = req.body;
+        const { kartUid, userId } = req.body;
 
         if (!kartUid || !userId) {
             return res.status(400).json({ 
@@ -60,7 +65,7 @@ router.post('/onayla', authenticateToken, requireAdminOrHoca, async (req, res) =
             });
         }
 
-        const result = await cardApprovalService.approveCard(kartUid, userId, adminId);
+        const result = await cardApprovalService.approveCard(kartUid, userId, req.user.kullaniciId);
         
         if (result.success) {
             return res.json(result);
@@ -73,6 +78,20 @@ router.post('/onayla', authenticateToken, requireAdminOrHoca, async (req, res) =
 });
 
 // GET /api/kartlar/:id - ID'ye göre tek bir kart getir
+router.get('/son-okutulan', authenticateToken, requireAdminOrHoca, async (req, res) => {
+    try {
+        const latest = await prisma.erisimKaydi.findFirst({
+            where: { okunanUid: { not: null } },
+            orderBy: { olayTamani: 'desc' },
+            select: { okunanUid: true, olayTamani: true, sonuc: true }
+        });
+        if (!latest) return res.status(404).json({ hata: 'Henüz okutulmuş kart bulunamadı.' });
+        return res.json(latest);
+    } catch (error) {
+        return res.status(500).json({ hata: 'Son kart bilgisi alınamadı.' });
+    }
+});
+
 router.get('/:id', authenticateToken, requireAdminOrHoca, async (req, res) => {
     try {
         const { id } = req.params;
@@ -89,7 +108,7 @@ router.get('/:id', authenticateToken, requireAdminOrHoca, async (req, res) => {
 });
 
 // Yeni kart tanımla
-router.post('/', authenticateToken, requireAdminOrHoca, async (req, res) => {
+router.post('/', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { kartUid, durum, verilicTarihi } = req.body;
 
@@ -116,7 +135,7 @@ router.post('/', authenticateToken, requireAdminOrHoca, async (req, res) => {
 });
 
 // Kart durumunu / bilgilerini güncelle (örn. durum: kayip/iptal/hasarli)
-router.put('/:id', authenticateToken, requireAdminOrHoca, async (req, res) => {
+router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { durum, iptalTarihi, iptalNedeni } = req.body;
@@ -141,7 +160,7 @@ router.put('/:id', authenticateToken, requireAdminOrHoca, async (req, res) => {
 });
 
 // Kartı sil
-router.delete('/:id', authenticateToken, requireAdminOrHoca, async (req, res) => {
+router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { id } = req.params;
 

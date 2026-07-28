@@ -19,7 +19,16 @@ router.get('/', async (req, res) => {
             include: {
                 cihaz: true,
                 kapi: true,
-                kullanici: true
+                kullanici: {
+                    select: {
+                        kullaniciId: true,
+                        ad: true,
+                        soyad: true,
+                        eposta: true,
+                        rol: true,
+                        durum: true
+                    }
+                }
             }
         });
 

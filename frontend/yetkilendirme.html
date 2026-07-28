@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kullanıcı Yetkilendirme | Okul Erişim Kontrolü</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260728-6">
   <script src="auth-guard.js?v=20260728-1"></script>
-  <script src="script.js?v=20260728-3" defer></script>
+  <script src="script.js?v=20260728-7" defer></script>
 </head>
-<body data-page="authorization" data-auth-required="true">
+<body data-page="authorization" data-auth-required="true" data-roles="admin,hoca">
   <div class="app-shell">
     <nav class="navbar" id="main-navigation" aria-label="Ana navigasyon">
       <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span><div class="brand-copy"><div class="logo">SecureLab</div><small>Erişim Yönetim Platformu</small></div></div>
@@ -39,7 +39,7 @@
           <article class="metric-card"><div class="metric-top"><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><span class="badge badge-info">Toplam</span></div><div class="metric-label">Tanımlı Kullanıcı</div><div class="metric-value" id="authorization-user-count">—</div><div class="metric-detail">Backend kullanıcı kayıtları</div></article>
           <article class="metric-card"><div class="metric-top"><span class="metric-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m5 12 4 4L19 6"/></svg></span><span class="badge badge-success">Yetkili</span></div><div class="metric-label">Aktif Yetki</div><div class="metric-value" id="authorization-active-count">—</div><div class="metric-detail">Laboratuvara erişebilir</div></article>
           <article class="metric-card"><div class="metric-top"><span class="metric-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6 6 18M6 6l12 12"/></svg></span><span class="badge badge-danger">Engelli</span></div><div class="metric-label">Pasif Yetki</div><div class="metric-value" id="authorization-passive-count">—</div><div class="metric-detail">Erişimi durdurulmuş kayıt</div></article>
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M3 10h18"/></svg></span><span class="badge badge-neutral">TODO</span></div><div class="metric-label">Kart Okuyucu</div><div class="metric-value">—</div><div class="metric-detail">Son okutulan UID endpoint’i bekleniyor</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M3 10h18"/></svg></span><span class="badge badge-info" id="latest-card-state">Canlı</span></div><div class="metric-label">Son Okutulan Kart</div><div class="metric-value metric-value-code" id="latest-card-uid">—</div><div class="metric-detail" id="latest-card-detail">Kart okuyucu sorgulanıyor</div></article>
         </section>
 
         <section class="card-box section-gap">
@@ -48,7 +48,7 @@
             <form id="authorization-form" class="form-grid form-grid-4">
               <div class="form-group"><label for="auth-full-name">Ad Soyad</label><select id="auth-full-name" name="kullaniciId" class="form-control" required><option value="">Kullanıcılar yükleniyor</option></select></div>
               <div class="form-group"><label for="auth-role">Rol</label><select id="auth-role" class="form-control" disabled><option value="">Kullanıcı rolü</option><option value="hoca">Hoca / Akademisyen</option><option value="admin">Yönetici</option><option value="sistem">Sistem</option></select></div>
-              <div class="form-group"><label for="rfidInput">RFID Kart UID</label><div class="input-action-row"><input type="text" id="rfidInput" name="kartUid" list="rfid-card-options" class="form-control" placeholder="Kayıtlı kart UID’si" required><datalist id="rfid-card-options"></datalist><button type="button" class="btn-icon" id="fetch-card-button" title="Kart okuyucu endpoint'i bekleniyor" aria-label="Son okutulan kartı getir" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 11a8 8 0 1 0-2.3 5.7L20 14M20 20v-6h-6"/></svg>Çek</button></div></div>
+              <div class="form-group"><label for="rfidInput">RFID Kart UID</label><div class="input-action-row"><input type="text" id="rfidInput" name="kartUid" list="rfid-card-options" class="form-control" placeholder="Kayıtlı kart UID’si" required><datalist id="rfid-card-options"></datalist><button type="button" class="btn-icon" id="fetch-card-button" title="Son okutulan kartı getir" aria-label="Son okutulan kartı getir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 11a8 8 0 1 0-2.3 5.7L20 14M20 20v-6h-6"/></svg>Çek</button></div></div>
               <button type="submit" class="btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m5 12 4 4L19 6"/></svg>Yetki Tanımla</button>
             </form>
             <div id="authorization-message" class="form-message" role="status" aria-live="polite" hidden></div>

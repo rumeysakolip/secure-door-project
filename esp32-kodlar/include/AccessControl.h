@@ -20,7 +20,7 @@ public:
     bool verifyAccess(String authData, bool isCard);
 
     // Kişiye Özel Çevrimdışı Şifre Yönetimi (Yeni Entegrasyon)
-    void syncOfflinePins(String jsonList);  // Sunucudan (MQTT) gelen JSON listesini kaydeder
+    void syncOfflinePins(String jsonList, bool replace = true);
     String getLastOfflineUserId();          // Çevrimdışı girişte doğrulanan kişinin ID'sini döner
 };
 

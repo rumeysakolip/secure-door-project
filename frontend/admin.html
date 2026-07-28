@@ -4,11 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ana Sayfa | Kontrol Paneli</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260728-6">
   <script src="auth-guard.js?v=20260728-1"></script>
-  <script src="script.js?v=20260728-3" defer></script>
+  <script src="script.js?v=20260728-7" defer></script>
 </head>
-<body data-page="admin" data-auth-required="true">
+<body data-page="admin" data-auth-required="true" data-roles="admin">
   <div class="app-shell">
     <nav class="navbar" id="main-navigation" aria-label="Ana navigasyon">
       <div class="brand">
@@ -52,7 +52,7 @@
         <section class="grid-2">
           <article class="card-box">
             <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 12h.01M15 12h.01M9 17h6"/></svg></span><div><h3>Laboratuvar Kapısı</h3><small>Canlı altyapı kontrolü</small></div></div><span class="badge badge-neutral" id="admin-infra-state">Durum yükleniyor</span></div>
-            <div class="card-body"><div class="status-list"><div class="status-row"><span class="status-label">Kapı durumu</span><strong class="status-value" id="admin-door-state">Yükleniyor</strong></div><div class="status-row"><span class="status-label">Cihaz bağlantısı</span><strong class="status-value" id="admin-device-state">Yükleniyor</strong></div><div class="status-row"><span class="status-label">Son giriş denemesi</span><strong class="status-value" id="admin-last-access">Yükleniyor</strong></div></div></div>
+            <div class="card-body"><div class="status-list"><div class="status-row"><span class="status-label">Kapı durumu</span><strong class="status-value" id="admin-door-state">Yükleniyor</strong></div><div class="status-row"><span class="status-label">Cihaz bağlantısı</span><strong class="status-value" id="admin-device-state">Yükleniyor</strong></div><div class="status-row"><span class="status-label">Son giriş denemesi</span><strong class="status-value" id="admin-last-access">Yükleniyor</strong></div></div><button type="button" class="btn-primary btn-block" id="remote-door-button" disabled>Laboratuvar Kapısını Aç</button><div id="remote-door-message" class="form-message" role="status" aria-live="polite" hidden></div></div>
           </article>
           <article class="card-box">
             <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a10 10 0 1 0 10 10M12 6v6l4 2"/></svg></span><div><h3>Hızlı İşlemler</h3><small>Sık kullanılan yönetim bağlantıları</small></div></div></div>

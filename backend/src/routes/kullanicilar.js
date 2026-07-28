@@ -1,149 +1,182 @@
 const express = require('express');
-const router = express.Router();
+const argon2 = require('argon2');
 const prisma = require('../config/prisma');
-const { refreshSingleUserPin } = require('../services/pinService');
-const { authenticateToken, requireAdminOrHoca } = require('../middlewares/authMiddleware');
-router.use(authenticateToken, requireAdminOrHoca);
-// Kullanıcıları listele (durum ve rol parametrelerine göre isteğe bağlı filtreleme ile)
-router.get('/', async (req, res) => {
-    try {
-        const { durum, rol } = req.query;
-        const whereClause = {};
-        
-        if (durum) whereClause.durum = durum;
-        if (rol) whereClause.rol = rol;
+const { refreshSingleUserPin, generateRandomPin } = require('../services/pinService');
+const {
+  authenticateToken,
+  requireAdmin,
+  requireAdminOrHoca,
+  requireSelfOrAdmin
+} = require('../middlewares/authMiddleware');
 
-        const kullanicilar = await prisma.kullanici.findMany({
-            where: whereClause,
-            include: {
-                birim: true
-            }
-        });
-        
-        res.json(kullanicilar);
-    } catch (error) {
-        console.error("Kullanıcılar listelenirken hata:", error);
-        res.status(500).json({ hata: "Sunucu hatası" });
-    }
-});
+const router = express.Router();
+router.use(authenticateToken);
 
-// Yeni kullanıcı (hoca/admin) oluştur
-router.post('/', async (req, res) => {
-    try {
-        const { ad, soyad, eposta, birimId, durum, rol } = req.body;
+const safeUserSelect = {
+  kullaniciId: true,
+  ad: true,
+  soyad: true,
+  eposta: true,
+  birimId: true,
+  durum: true,
+  rol: true,
+  pinSonDegisim: true,
+  pinGecerlilikBitis: true,
+  olusturmaTamani: true,
+  guncellemeTamani: true,
+  birim: true
+};
 
-        if (!ad || !soyad) {
-            return res.status(400).json({ hata: "'ad' ve 'soyad' alanları zorunludur" });
-        }
-
-        const yeniKullanici = await prisma.kullanici.create({
-            data: {
-                ad,
-                soyad,
-                eposta: eposta ?? null,
-                birimId: birimId != null ? parseInt(birimId) : null,
-                ...(durum ? { durum } : {}),
-                ...(rol ? { rol } : {})
-            },
-            include: { birim: true }
-        });
-
-        res.status(201).json(yeniKullanici);
-    } catch (error) {
-        console.error("Kullanıcı oluşturulurken hata:", error);
-        if (error.code === 'P2003') {
-            return res.status(400).json({ hata: "Belirtilen birimId geçerli bir birime ait değil" });
-        }
-        res.status(500).json({ hata: "Sunucu hatası" });
-    }
-});
-
-// Kullanıcı bilgilerini güncelle (durum: aktif/pasif/askida dahil)
-router.put('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { ad, soyad, eposta, birimId, durum, rol } = req.body;
-
-        const guncellenmisKullanici = await prisma.kullanici.update({
-            where: { kullaniciId: parseInt(id) },
-            data: {
-                ...(ad !== undefined ? { ad } : {}),
-                ...(soyad !== undefined ? { soyad } : {}),
-                ...(eposta !== undefined ? { eposta } : {}),
-                ...(birimId !== undefined ? { birimId: birimId != null ? parseInt(birimId) : null } : {}),
-                ...(durum !== undefined ? { durum } : {}),
-                ...(rol !== undefined ? { rol } : {})
-            },
-            include: { birim: true }
-        });
-
-        res.json(guncellenmisKullanici);
-    } catch (error) {
-        console.error("Kullanıcı güncellenirken hata:", error);
-        if (error.code === 'P2025') {
-            return res.status(404).json({ hata: "Kullanıcı bulunamadı" });
-        }
-        if (error.code === 'P2003') {
-            return res.status(400).json({ hata: "Belirtilen birimId geçerli bir birime ait değil" });
-        }
-        res.status(500).json({ hata: "Sunucu hatası" });
-    }
-});
-
-// Kullanıcıyı sil
-router.delete('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        await prisma.kullanici.delete({
-            where: { kullaniciId: parseInt(id) }
-        });
-
-        res.status(200).json({ mesaj: "Kullanıcı silindi" });
-    } catch (error) {
-        console.error("Kullanıcı silinirken hata:", error);
-        if (error.code === 'P2025') {
-            return res.status(404).json({ hata: "Kullanıcı bulunamadı" });
-        }
-        if (error.code === 'P2003') {
-            return res.status(409).json({ hata: "Bu kullanıcıya bağlı kayıtlar (kart yetkisi, erişim kaydı vb.) olduğu için silinemedi. Bunun yerine durumu 'pasif' yapmayı deneyin." });
-        }
-        res.status(500).json({ hata: "Sunucu hatası" });
-    }
-});
-
-// POST /api/kullanicilar/:id/sifre-yenile
-router.post('/:id/sifre-yenile', async (req, res) => {
+router.get('/ozet', requireAdminOrHoca, async (req, res) => {
   try {
-    const sonuc = await refreshSingleUserPin(req.params.id);
-    return res.status(200).json({
-      mesaj: 'Kullanıcının şifresi başarıyla yenilendi ve MQTT ile cihaza bildirildi.',
-      veri: sonuc
-    });
+    const [toplam, aktif] = await Promise.all([
+      prisma.kullanici.count(),
+      prisma.kullanici.count({ where: { durum: 'aktif' } })
+    ]);
+    return res.json({ toplam, aktif });
   } catch (error) {
-    return res.status(400).json({
-      hata: error.message
-    });
+    return res.status(500).json({ hata: 'Kullanıcı özeti alınamadı.' });
   }
 });
 
-// ID'ye göre tek bir kullanıcı getir
-router.get('/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const kullanici = await prisma.kullanici.findUnique({
-            where: { kullaniciId: parseInt(id) },
-            include: {
-                birim: true
-            }
-        });
-        
-        if (!kullanici) return res.status(404).json({ hata: "Kullanıcı bulunamadı" });
-        res.json(kullanici);
-    } catch (error) {
-        console.error("Kullanıcı getirilirken hata:", error);
-        res.status(500).json({ hata: "Sunucu hatası" });
+router.get('/', requireAdminOrHoca, async (req, res) => {
+  try {
+    const { durum, rol } = req.query;
+    const where = {
+      ...(durum ? { durum } : {}),
+      ...(rol ? { rol } : {})
+    };
+    const users = await prisma.kullanici.findMany({
+      where,
+      select: safeUserSelect,
+      orderBy: [{ ad: 'asc' }, { soyad: 'asc' }]
+    });
+    return res.json(users);
+  } catch (error) {
+    console.error('Kullanıcılar listelenirken hata:', error);
+    return res.status(500).json({ hata: 'Sunucu hatası' });
+  }
+});
+
+router.post('/', requireAdmin, async (req, res) => {
+  try {
+    const { ad, soyad, eposta, birimId, durum, rol, pin } = req.body;
+    if (!String(ad || '').trim() || !String(soyad || '').trim()) {
+      return res.status(400).json({ hata: "'ad' ve 'soyad' alanları zorunludur" });
     }
+
+    const normalizedEmail = eposta ? String(eposta).trim().toLowerCase() : null;
+    if (normalizedEmail) {
+      const existing = await prisma.kullanici.findFirst({
+        where: { eposta: { equals: normalizedEmail, mode: 'insensitive' } }
+      });
+      if (existing) return res.status(409).json({ hata: 'Bu e-posta adresi zaten kullanılıyor.' });
+    }
+
+    const initialPin = String(pin || generateRandomPin());
+    if (!/^\d{6}$/.test(initialPin)) {
+      return res.status(400).json({ hata: 'Başlangıç PIN değeri 6 haneli olmalıdır.' });
+    }
+
+    const initialHash = await argon2.hash(initialPin);
+    const user = await prisma.kullanici.create({
+      data: {
+        ad: String(ad).trim(),
+        soyad: String(soyad).trim(),
+        eposta: normalizedEmail,
+        birimId: birimId != null ? Number.parseInt(birimId, 10) : null,
+        sifreHash: initialHash,
+        pinHash: initialHash,
+        pinSonDegisim: new Date(),
+        ...(durum ? { durum } : {}),
+        ...(rol ? { rol } : {})
+      },
+      select: safeUserSelect
+    });
+
+    return res.status(201).json({ ...user, initialPin });
+  } catch (error) {
+    console.error('Kullanıcı oluşturulurken hata:', error);
+    if (error.code === 'P2003') return res.status(400).json({ hata: 'Geçersiz birimId.' });
+    return res.status(500).json({ hata: 'Sunucu hatası' });
+  }
+});
+
+router.put('/:id', requireAdmin, async (req, res) => {
+  try {
+    const { ad, soyad, eposta, birimId, durum, rol } = req.body;
+    const normalizedEmail = eposta === undefined
+      ? undefined
+      : (eposta ? String(eposta).trim().toLowerCase() : null);
+
+    if (normalizedEmail) {
+      const existing = await prisma.kullanici.findFirst({
+        where: {
+          eposta: { equals: normalizedEmail, mode: 'insensitive' },
+          NOT: { kullaniciId: BigInt(req.params.id) }
+        }
+      });
+      if (existing) return res.status(409).json({ hata: 'Bu e-posta adresi zaten kullanılıyor.' });
+    }
+
+    const user = await prisma.kullanici.update({
+      where: { kullaniciId: BigInt(req.params.id) },
+      data: {
+        ...(ad !== undefined ? { ad: String(ad).trim() } : {}),
+        ...(soyad !== undefined ? { soyad: String(soyad).trim() } : {}),
+        ...(normalizedEmail !== undefined ? { eposta: normalizedEmail } : {}),
+        ...(birimId !== undefined ? { birimId: birimId != null ? Number.parseInt(birimId, 10) : null } : {}),
+        ...(durum !== undefined ? { durum } : {}),
+        ...(rol !== undefined ? { rol } : {})
+      },
+      select: safeUserSelect
+    });
+    return res.json(user);
+  } catch (error) {
+    console.error('Kullanıcı güncellenirken hata:', error);
+    if (error.code === 'P2025') return res.status(404).json({ hata: 'Kullanıcı bulunamadı' });
+    if (error.code === 'P2003') return res.status(400).json({ hata: 'Geçersiz birimId.' });
+    return res.status(500).json({ hata: 'Sunucu hatası' });
+  }
+});
+
+router.delete('/:id', requireAdmin, async (req, res) => {
+  try {
+    await prisma.kullanici.delete({ where: { kullaniciId: BigInt(req.params.id) } });
+    return res.json({ mesaj: 'Kullanıcı silindi' });
+  } catch (error) {
+    console.error('Kullanıcı silinirken hata:', error);
+    if (error.code === 'P2025') return res.status(404).json({ hata: 'Kullanıcı bulunamadı' });
+    if (error.code === 'P2003') {
+      return res.status(409).json({ hata: "Bağlı kayıtları bulunan kullanıcı silinemez; durumunu 'pasif' yapın." });
+    }
+    return res.status(500).json({ hata: 'Sunucu hatası' });
+  }
+});
+
+router.post('/:id/sifre-yenile', requireSelfOrAdmin, async (req, res) => {
+  try {
+    const result = await refreshSingleUserPin(req.params.id);
+    return res.json({
+      mesaj: 'Kullanıcının PIN değeri yenilendi ve aktif cihazlara bildirildi.',
+      veri: result
+    });
+  } catch (error) {
+    return res.status(400).json({ hata: error.message });
+  }
+});
+
+router.get('/:id', requireSelfOrAdmin, async (req, res) => {
+  try {
+    const user = await prisma.kullanici.findUnique({
+      where: { kullaniciId: BigInt(req.params.id) },
+      select: safeUserSelect
+    });
+    if (!user) return res.status(404).json({ hata: 'Kullanıcı bulunamadı' });
+    return res.json(user);
+  } catch (error) {
+    return res.status(500).json({ hata: 'Sunucu hatası' });
+  }
 });
 
 module.exports = router;

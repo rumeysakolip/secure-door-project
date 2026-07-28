@@ -10,6 +10,15 @@ bool OfflineQueue::baslat() {
         return false;
     }
     baslatildi = true;
+    File mevcutDosya = LittleFS.open(DOSYA_YOLU, FILE_READ);
+    if (mevcutDosya) {
+        const size_t dosyaBoyutu = mevcutDosya.size();
+        mevcutDosya.close();
+        if (dosyaBoyutu % sizeof(CevrimdisiOlay) != 0) {
+            LittleFS.remove(DOSYA_YOLU);
+            Serial.println("[OfflineQueue] Eski kuyruk formati temizlendi.");
+        }
+    }
     Serial.println("[OfflineQueue] LittleFS hazir.");
     return true;
 }

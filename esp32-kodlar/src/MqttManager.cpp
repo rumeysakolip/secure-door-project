@@ -1,6 +1,8 @@
 #include "MqttManager.h"
+#include <algorithm>
 
 #ifdef ARDUINO
+#include "config.h"
 
 static MqttManager *g_activeInstance = nullptr;
 
@@ -80,7 +82,12 @@ bool MqttManager::publishPasswordAck(bool success) {
 
     std::string payload;
     serializeJson(doc, payload);
-    return _mqttClient.publish("securedoor/ack", payload.c_str());
+    std::string topic = "kapi/" + std::to_string(DEVICE_ID) + "/durum";
+    return _mqttClient.publish(topic.c_str(), payload.c_str());
+}
+
+bool MqttManager::isConnected() const {
+    return _mqttClient.connected();
 }
 
 bool MqttManager::hasPendingCommand() const {
@@ -110,15 +117,27 @@ void MqttManager::handleIncomingMessage(char *topic, byte *payload, unsigned int
 
 // Native ortam ve Genel Statik Metodlar
 std::string MqttManager::buildEventTopic() {
-    return "securedoor/events";
+#ifdef ARDUINO
+    return "kapi/" + std::to_string(DEVICE_ID) + "/erisim-istek";
+#else
+    return "kapi/1/erisim-istek";
+#endif
 }
 
 std::string MqttManager::buildCommandTopic() {
-    return "securedoor/commands";
+#ifdef ARDUINO
+    return "kapi/" + std::to_string(DEVICE_ID) + "/+";
+#else
+    return "kapi/1/+";
+#endif
 }
 
 std::string MqttManager::buildHeartbeatTopic() {
-    return "securedoor/heartbeat";
+#ifdef ARDUINO
+    return "kapi/" + std::to_string(DEVICE_ID) + "/saglik";
+#else
+    return "kapi/1/saglik";
+#endif
 }
 
 // EntryEvent nesnesini DB ile tam uyumlu JSON string'e çevirir
@@ -128,6 +147,9 @@ std::string MqttManager::serializeEntryEvent(const EntryEvent &event) {
     doc["cihaz_id"] = event.cihazId;
     doc["kapi_id"] = event.kapiId;
     doc["okunan_uid"] = event.okunanUid;
+    if (!event.kullaniciId.empty()) {
+        doc["kullanici_id"] = event.kullaniciId;
+    }
     doc["dogrulama_yontemi"] = event.dogrulamaYontemi;
     doc["sonuc"] = event.sonuc;
     if (!event.redNedeni.empty()) {
@@ -156,6 +178,7 @@ DeviceCommand MqttManager::parseCommand(const std::string &jsonPayload) {
         cmd.type = CommandType::DOOR_OPEN;
     } else if (komutTipi == "PASSWORD_RENEW") {
         cmd.type = CommandType::PASSWORD_RENEW;
+        cmd.replacePasswordList = doc["replace"] | true;
         if (doc["yeni_liste"].is<JsonArray>()) {
             std::string serializedList;
             serializeJson(doc["yeni_liste"], serializedList);

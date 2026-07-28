@@ -1,15 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
-const { authenticateToken, requireAdminOrHoca } = require('../middlewares/authMiddleware');
+const { authenticateToken, requireAdmin, requireAdminOrHoca } = require('../middlewares/authMiddleware');
 router.use(authenticateToken, requireAdminOrHoca);
+const safeUserSelect = {
+    kullaniciId: true,
+    ad: true,
+    soyad: true,
+    eposta: true,
+    rol: true,
+    durum: true
+};
 
 // Tüm ihlalleri veritabanından getir
 router.get('/', async (req, res) => {
     try {
         const ihlaller = await prisma.ihlalKaydi.findMany({
             include: {
-                kullanici: true
+                kullanici: { select: safeUserSelect }
             }
         });
         res.json(ihlaller);
@@ -26,7 +34,7 @@ router.get('/:id', async (req, res) => {
         const ihlal = await prisma.ihlalKaydi.findUnique({
             where: { ihlalId: parseInt(id) },
             include: {
-                kullanici: true
+                kullanici: { select: safeUserSelect }
             }
         });
         
@@ -39,7 +47,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Manuel ihlal kaydı oluştur (otomatik cron tespiti dışında, admin elle de açabilsin diye)
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
     try {
         const { kullaniciId, tarih, tur, aciklama } = req.body;
 
@@ -54,7 +62,7 @@ router.post('/', async (req, res) => {
                 tur,
                 aciklama: aciklama ?? null
             },
-            include: { kullanici: true }
+            include: { kullanici: { select: safeUserSelect } }
         });
 
         res.status(201).json(yeniIhlal);

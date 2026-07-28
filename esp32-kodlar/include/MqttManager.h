@@ -32,6 +32,7 @@ struct EntryEvent {
     int cihazId = 1;              // DB Cihaz ID
     int kapiId = 1;               // DB Kapı ID
     std::string okunanUid;        // Okunan RFID Kart UID ("A1:B2:C3:D4") veya PIN ise boş
+    std::string kullaniciId;      // PIN doğrulamasında eşleşen kullanıcı ID'si
     std::string dogrulamaYontemi; // "kart" | "pin" | "uzaktan"
     std::string sonuc;            // "izin" | "red"
     std::string redNedeni;        // "tanimsiz_kart", "gecersiz_pin", "yetkisiz"
@@ -43,6 +44,7 @@ struct DeviceCommand {
     CommandType type = CommandType::UNKNOWN;
     std::string issuedByUserId;
     std::string newPasswordListJson; // PASSWORD_RENEW için gelen JSON dizisi
+    bool replacePasswordList = true;
     std::string targetCardUid;       // BLOCK/UNBLOCK için hedef kart UID
     uint32_t timestampEpoch = 0;
 };
@@ -57,6 +59,7 @@ public:
     bool publishEntryEvent(const EntryEvent &event);
     bool publishHeartbeat(int cihazId = 1);
     bool publishPasswordAck(bool success);
+    bool isConnected() const;
 
     bool hasPendingCommand() const;
     DeviceCommand popPendingCommand();

@@ -12,6 +12,8 @@ if [ -x "$PRISMA_BIN" ] &&
 
   echo "Prisma migrationlari uygulaniyor..."
   "$PRISMA_BIN" migrate deploy
+  echo "Baslangic verileri dogrulaniyor..."
+  node /app/prisma/seed.js
 else
   echo "Prisma paketi veya migration bulunamadi."
   echo "Migration adimi simdilik atlaniyor."

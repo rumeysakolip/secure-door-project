@@ -1,142 +1,136 @@
-const { faker } = require('@faker-js/faker');
-const argon2 = require('argon2'); // 1. Argon2 kütüphanesini içeri aktardık
-
-// Uygulamanın kullandığı, driver adapter ile kurulmuş aynı Prisma client'ı
+const argon2 = require('argon2');
+const crypto = require('crypto');
 const prisma = require('../src/config/prisma');
 
-async function main() {
-  console.log('🌱 Seed script başlıyor...\n');
-
-  // 1. Bölüm oluştur
-  const bolum = await prisma.birim.create({
-    data: {
-      kod: 'CENG',
-      ad: 'Bilgisayar Mühendisliği',
-      aktif: true,
-    },
+async function ensureUser({ ad, soyad, eposta, rol, birimId, password }) {
+  const existing = await prisma.kullanici.findFirst({
+    where: { eposta: { equals: eposta, mode: 'insensitive' } }
   });
-  console.log('✓ Bölüm oluşturuldu:', bolum.ad);
+  const passwordHash = await argon2.hash(password);
 
-  // Argon2 ile '123456' şifresini hash'liyoruz
-  const hashedPassword = await argon2.hash('123456');
+  if (existing) {
+    return prisma.kullanici.update({
+      where: { kullaniciId: existing.kullaniciId },
+      data: {
+        ad,
+        soyad,
+        eposta,
+        rol,
+        birimId,
+        durum: 'aktif',
+        ...(existing.sifreHash ? {} : { sifreHash: existing.pinHash || passwordHash }),
+        ...(existing.pinHash ? {} : { pinHash: passwordHash })
+      }
+    });
+  }
 
-  // 2. Hocalar oluştur (12 tane)
-  const hocalar = [];
-
-  // Sabit Giriş Kullanıcısı (Ahmet)
-  const ahmet = await prisma.kullanici.create({
+  return prisma.kullanici.create({
     data: {
-      ad: 'Ahmet',
-      soyad: 'Yılmaz',
-      eposta: 'ahmet@subu.edu.tr',
-      pinHash: hashedPassword, // Hashlenmiş şifreyi verdik
-      birimId: bolum.birimId,
+      ad,
+      soyad,
+      eposta,
+      rol,
+      birimId,
       durum: 'aktif',
-      rol: 'hoca',
-    },
+      sifreHash: passwordHash,
+      pinHash: passwordHash,
+      pinSonDegisim: new Date()
+    }
   });
-  hocalar.push(ahmet);
+}
 
-  // Geri kalan 11 rastgele hoca
-  for (let i = 0; i < 11; i++) {
-    const hoca = await prisma.kullanici.create({
+async function main() {
+  const birim = await prisma.birim.upsert({
+    where: { kod: 'CENG' },
+    update: { ad: 'Bilgisayar Mühendisliği', aktif: true },
+    create: { kod: 'CENG', ad: 'Bilgisayar Mühendisliği', aktif: true }
+  });
+
+  const admin = await ensureUser({
+    ad: 'Sistem',
+    soyad: 'Yöneticisi',
+    eposta: 'admin@subu.edu.tr',
+    rol: 'admin',
+    birimId: birim.birimId,
+    password: process.env.SEED_ADMIN_PASSWORD || '123456'
+  });
+
+  const hoca = await ensureUser({
+    ad: 'Ahmet',
+    soyad: 'Yılmaz',
+    eposta: 'ahmet@subu.edu.tr',
+    rol: 'hoca',
+    birimId: birim.birimId,
+    password: process.env.SEED_TEACHER_PASSWORD || '123456'
+  });
+
+  const kapi = await prisma.kapi.findFirst({ where: { ad: 'Laboratuvar Kapısı' } })
+    || await prisma.kapi.create({
       data: {
-        ad: faker.person.firstName('male'),
-        soyad: faker.person.lastName(),
-        eposta: faker.internet.email(),
-        pinHash: hashedPassword, // Hashlenmiş şifreyi verdik
-        birimId: bolum.birimId,
-        durum: 'aktif',
-        rol: 'hoca',
-      },
+        ad: 'Laboratuvar Kapısı',
+        bina: 'A',
+        kat: 2,
+        aciklama: 'Bilgisayar Laboratuvarı',
+        durum: 'aktif'
+      }
     });
-    hocalar.push(hoca);
-  }
-  console.log(`✓ ${hocalar.length} hoca oluşturuldu`);
 
-  // 3. Kartlar oluştur (12 tane - her hocaya 1)
-  const kartlar = [];
-  for (let i = 0; i < 12; i++) {
-    const kart = await prisma.kart.create({
+  const cihaz = await prisma.cihaz.upsert({
+    where: { seriNo: 'ESP32-LAB-001' },
+    update: { durum: 'aktif' },
+    create: { seriNo: 'ESP32-LAB-001', durum: 'aktif' }
+  });
+
+  const atama = await prisma.cihazKapiAtama.findFirst({
+    where: { cihazId: cihaz.cihazId, kapiId: kapi.kapiId, bitis: null }
+  });
+  if (!atama) {
+    await prisma.cihazKapiAtama.create({
+      data: { cihazId: cihaz.cihazId, kapiId: kapi.kapiId }
+    });
+  }
+
+  const durumSayisi = await prisma.cihazDurumu.count({ where: { cihazId: cihaz.cihazId } });
+  if (!durumSayisi) {
+    await prisma.cihazDurumu.create({
       data: {
-        kartUid: `A${i}:B${i}:C${i}:D${i}`,
-        durum: 'aktif',
-      },
+        cihazId: cihaz.cihazId,
+        kapiDurumu: 'kapali',
+        cihazDurumTip: 'cevrimdisi',
+        firmwareVersiyon: '1.0.0',
+        sonHeartbeat: new Date()
+      }
     });
-    kartlar.push(kart);
   }
-  console.log(`✓ ${kartlar.length} kart oluşturuldu`);
 
-  // 4. Kartları hocalara yetkilendir
-  for (let i = 0; i < kartlar.length; i++) {
+  const kart = await prisma.kart.upsert({
+    where: { kartUid: 'A0:B0:C0:D0' },
+    update: {},
+    create: { kartUid: 'A0:B0:C0:D0', durum: 'aktif' }
+  });
+
+  const kartYetkisi = await prisma.kartYetkilendirme.findUnique({
+    where: { kartUid: kart.kartUid }
+  });
+  if (!kartYetkisi) {
     await prisma.kartYetkilendirme.create({
       data: {
-        kartUid: kartlar[i].kartUid,
-        kullaniciId: hocalar[i].kullaniciId,
-        birimId: bolum.birimId,
+        kartUid: kart.kartUid,
+        kullaniciId: hoca.kullaniciId,
+        birimId: birim.birimId,
+        yetkilendiren: admin.kullaniciId,
         durum: 'aktif',
-        yetkilendirilmeTarihi: faker.date.past(),
-        notlar: 'Seed ile oluşturuldu',
-      },
+        notlar: 'Başlangıç verisi'
+      }
     });
   }
-  console.log(`✓ Kartlar hocalara yetkilendirildi`);
 
-  // 5. Kapı oluştur (1 tane)
-  const kapi = await prisma.kapi.create({
-    data: {
-      ad: 'Laboratuvar Kapısı',
-      bina: 'A',
-      kat: 2,
-      aciklama: 'Bilgisayar Lab',
-      durum: 'aktif',
-    },
-  });
-  console.log('✓ Kapı oluşturuldu:', kapi.ad);
-
-  // 6. Cihaz oluştur (1 ESP32)
-  const cihaz = await prisma.cihaz.create({
-    data: {
-      seriNo: 'ESP32-LAB-001',
-      durum: 'aktif',
-    },
-  });
-  console.log('✓ Cihaz oluşturuldu:', cihaz.seriNo);
-
-  // 7. Cihaz-Kapı Atama
-  await prisma.cihazKapiAtama.create({
-    data: {
-      cihazId: cihaz.cihazId,
-      kapiId: kapi.kapiId,
-      baslangic: new Date(),
-    },
-  });
-  console.log('✓ ESP32 → Kapı atandı');
-
-  // 8. Cihaz Durumu
-  await prisma.cihazDurumu.create({
-    data: {
-      cihazId: cihaz.cihazId,
-      kapiDurumu: 'kapali',
-      cihazDurumTip: 'cevrimici',
-      bataryaSeviyesi: 85,
-      wifiSignali: -55,
-      firmwareVersiyon: '1.0.0',
-      sonHeartbeat: new Date(),
-    },
-  });
-  console.log('✓ Cihaz durumu kaydedildi');
-
-  // 9. Erişim Kayıtları oluştur (20 giriş/çıkış kaydı)
-  for (let i = 0; i < 20; i++) {
-    const hoca = hocalar[Math.floor(Math.random() * hocalar.length)];
-    const kart = kartlar[Math.floor(Math.random() * kartlar.length)];
-    const olayTamani = faker.date.recent({ days: 7 });
-
+  const accessCount = await prisma.erisimKaydi.count();
+  if (!accessCount) {
     await prisma.erisimKaydi.create({
       data: {
-        kayitId: BigInt(i + 1),
-        cihazOlayId: faker.string.uuid(),
+        kayitId: 1n,
+        cihazOlayId: crypto.randomUUID(),
         cihazId: cihaz.cihazId,
         kapiId: kapi.kapiId,
         kullaniciId: hoca.kullaniciId,
@@ -144,20 +138,19 @@ async function main() {
         okunanUid: kart.kartUid,
         dogrulamaYontemi: 'kart',
         sonuc: 'izin',
-        olayTamani: olayTamani,
-      },
+        olayTamani: new Date()
+      }
     });
   }
-  console.log('✓ 20 erişim kaydı oluşturuldu');
 
-  console.log('\n✅ Seed tamamlandı!\n');
+  console.log('Başlangıç verileri hazır.');
+  console.log('Yönetici: admin@subu.edu.tr');
+  console.log('Öğretim görevlisi: ahmet@subu.edu.tr');
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Hata:', e);
+  .catch((error) => {
+    console.error('Seed hatası:', error);
     process.exit(1);
   })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+  .finally(async () => prisma.$disconnect());
