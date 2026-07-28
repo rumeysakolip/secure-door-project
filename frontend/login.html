@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Giriş Yap | Lab Erişim Sistemi</title>
+  <title>Giriş Yap | SecureLab</title>
   <link rel="stylesheet" href="style.css">
+  <script src="script.js?v=20260727-2" defer></script>
 </head>
 <body>
   <main class="login-page">
@@ -32,35 +33,66 @@
       <div class="login-card">
         <div class="login-card-header">
           <div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>Yetkili kullanıcı girişi</div>
-          <h2>Tekrar hoş geldiniz</h2>
-          <p>Yönetim paneline erişmek için kimlik bilgilerinizi girin.</p>
+          <h2 class="page-title">Tekrar hoş geldiniz</h2>
+          <p class="page-description">Yönetim paneline erişmek için kimlik bilgilerinizi girin.</p>
         </div>
 
-    <form onsubmit="alert('Giriş başarılı!'); window.location.href='index.html'; return false;">
-      <div class="form-group">
-        <label>Kullanıcı Adı / E-posta</label>
-        <input type="text" class="form-control" placeholder="Örn: admin" required>
-      </div>
+        <form id="login-form">
+          <div class="form-group">
+            <label for="login-identity">Kullanıcı Adı / E-posta</label>
+            <div class="input-with-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+              <input id="login-identity" name="identity" type="text" class="form-control" placeholder="Örn: admin" autocomplete="username" required>
+            </div>
+          </div>
 
-      <div class="form-group" style="margin-bottom: 10px;">
-        <label>Şifre</label>
-        <input type="password" class="form-control" placeholder="••••••••" required>
-      </div>
+          <div class="form-group">
+            <label for="login-password">Şifre</label>
+            <div class="input-with-icon password-input">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg>
+              <input id="login-password" name="password" type="password" class="form-control" placeholder="••••••••" autocomplete="current-password" required>
+              <button type="button" class="password-toggle" id="password-toggle" aria-label="Şifreyi göster" aria-pressed="false">
+                <svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <div class="forgot-pass">
+              <button type="button" class="forgot-link" id="forgot-password-button">Şifremi unuttum</button>
+            </div>
+          </div>
+
+          <label class="remember-option">
+            <input type="checkbox" name="remember">
+            <span>Beni bu cihazda hatırla</span>
+          </label>
+
+          <div id="login-message" class="form-message" role="alert" aria-live="polite" hidden></div>
+
+          <button type="submit" class="btn-login">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+            Giriş Yap
+          </button>
+        </form>
 
         <div class="login-security"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg>Güvenli oturum bağlantısı</div>
       </div>
     </section>
   </main>
 
-  <!-- YENİ SCRIPT KODU -->
-  <script>
-    // Şifremi Unuttum İşlevi (Mail Gönderme Simülasyonu)
-    function forgotPassword() {
-      const email = prompt("Lütfen sisteme kayıtlı e-posta adresinizi girin (@subu.edu.tr):");
-      if (email && email.trim() !== "") {
-        alert("Şifre sıfırlama talimatları " + email + " adresine başarıyla gönderildi!");
-      }
-    }
-  </script>
+  <dialog class="password-dialog" id="forgot-password-dialog" aria-labelledby="forgot-password-title">
+    <form id="password-reset-form">
+      <div class="dialog-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M9 12h6M12 9v6"/></svg></div>
+      <h2 id="forgot-password-title">Şifrenizi sıfırlayın</h2>
+      <p>Sisteme kayıtlı e-posta adresinizi yazın. Sıfırlama bağlantısını size gönderelim.</p>
+      <div class="form-group">
+        <label for="reset-email">E-posta adresi</label>
+        <input id="reset-email" type="email" class="form-control" placeholder="ad.soyad@subu.edu.tr" autocomplete="email" required>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn-secondary" id="close-password-dialog">Vazgeç</button>
+        <button type="submit" class="btn-primary">Bağlantı Gönder</button>
+      </div>
+    </form>
+  </dialog>
+
 </body>
 </html>

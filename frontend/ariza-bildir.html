@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Arıza Bildir | QR Mobil</title>
   <link rel="stylesheet" href="style.css">
+  <script src="script.js?v=20260727-2" defer></script>
 </head>
 <body>
   <main class="standalone-page">
@@ -18,11 +19,11 @@
         <header class="ticket-header">
           <span class="ticket-header-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3M14 16l6-6 2 2-6 6"/></svg></span>
           <div class="eyebrow">Yeni destek kaydı</div>
-          <h1>Sistem Arıza Bildirimi</h1>
-          <p>Kapı, kart okuyucu veya diğer donanımlarla ilgili sorunu teknik ekibe iletin.</p>
+          <h1 class="page-title">Sistem Arıza Bildirimi</h1>
+          <p class="page-description">Kapı, kart okuyucu veya diğer donanımlarla ilgili sorunu teknik ekibe iletin.</p>
         </header>
 
-        <form class="ticket-form" onsubmit="alert('Arıza bildiriminiz sisteme iletildi. Teşekkürler!'); window.location.href='index.html'; return false;">
+        <form class="ticket-form" id="issue-report-form">
           <div class="form-grid">
             <div class="form-group">
               <label class="form-label" for="report-full-name">Ad Soyad</label>
@@ -59,7 +60,9 @@
             <span>Gönderdiğiniz bilgiler yalnızca teknik inceleme amacıyla kullanılacaktır.</span>
           </div>
 
-          <button type="submit" class="btn-primary">
+          <div id="issue-report-message" class="form-message" role="status" aria-live="polite"></div>
+
+          <button type="submit" class="btn-primary" id="issue-report-submit" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
             Bildirimi Gönder
           </button>
@@ -68,14 +71,5 @@
     </div>
   </main>
 
-  <script>
-    function updateFileName(input) {
-      const labelText = document.getElementById('fileNameText');
-      if (input.files && input.files.length > 0) {
-        labelText.textContent = input.files[0].name;
-        labelText.style.color = "var(--steel-light)";
-      }
-    }
-  </script>
 </body>
 </html>

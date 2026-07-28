@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ana Sayfa | Kontrol Paneli</title>
   <link rel="stylesheet" href="style.css">
-  <script src="script.js" defer></script>
+  <script src="script.js?v=20260727-2" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -31,40 +31,52 @@
       <header class="topbar">
         <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="main-navigation" aria-label="Menüyü aç"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         <div class="topbar-context"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 21h18M6 21V7l6-4 6 4v14M9 10h.01M15 10h.01"/></svg><span>Yönetici Merkezi / Sistem Kontrolü</span></div>
-        <span class="system-pill">Sistem çevrimiçi</span>
+        <span class="system-pill" id="admin-system-state">Sistem durumu yükleniyor</span>
       </header>
 
       <div class="container">
         <section class="page-header">
-          <div><div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18M3 12h18"/></svg>Yönetici görünümü</div><h1>Operasyon Merkezi</h1><p class="page-subtitle">Kapı altyapısının sağlık durumunu ve son erişim hareketlerini yönetin.</p></div>
-          <div class="header-actions"><a class="btn-secondary" href="yetkilendirme.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Yetkilendirme</a></div>
+          <div><div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18M3 12h18"/></svg>Yönetici görünümü</div><h1 class="page-title">Operasyon Merkezi</h1><p class="page-subtitle page-description">Kapı altyapısının sağlık durumunu ve son erişim hareketlerini yönetin.</p></div>
+          <div class="header-actions page-actions"><a class="btn-secondary" href="yetkilendirme.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Yetkilendirme</a></div>
         </section>
 
         <section class="metrics-grid">
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 12h.01M15 12h.01M9 17h6"/></svg></span><span class="badge badge-success">Güvenli</span></div><div class="metric-label">Kapı Kilidi</div><div class="metric-value">Kilitli</div><div class="metric-detail">Fiziksel erişim koruma altında</div></article>
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="6" rx="2"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h8"/></svg></span><span class="badge badge-success">Bağlı</span></div><div class="metric-label">RFID Okuyucu</div><div class="metric-value">Aktif</div><div class="metric-detail">Donanım bağlantısı sağlıklı</div></article>
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></span><span class="badge badge-info">14:32</span></div><div class="metric-label">Son Erişim</div><div class="metric-value">Başarılı</div><div class="metric-detail">Günlük şifre ile doğrulandı</div></article>
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0ZM12 9v4M12 17h.01"/></svg></span><span class="badge badge-warning">Takipte</span></div><div class="metric-label">Teknik Durum</div><div class="metric-value">1 Bildirim</div><div class="metric-detail">Açık arıza kaydı bulunuyor</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 12h.01M15 12h.01M9 17h6"/></svg></span><span class="badge badge-success">Kapılar</span></div><div class="metric-label">Tanımlı Kapı</div><div class="metric-value" id="admin-door-count">—</div><div class="metric-detail" id="admin-door-detail">Veriler yükleniyor</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="6" rx="2"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h8"/></svg></span><span class="badge badge-success">Cihazlar</span></div><div class="metric-label">Tanımlı Cihaz</div><div class="metric-value" id="admin-device-count">—</div><div class="metric-detail" id="admin-device-detail">Veriler yükleniyor</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></span><span class="badge badge-info">Kullanıcılar</span></div><div class="metric-label">Tanımlı Kullanıcı</div><div class="metric-value" id="admin-user-count">—</div><div class="metric-detail" id="admin-user-detail">Veriler yükleniyor</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0ZM12 9v4M12 17h.01"/></svg></span><span class="badge badge-warning">Kartlar</span></div><div class="metric-label">Tanımlı Kart</div><div class="metric-value" id="admin-card-count">—</div><div class="metric-detail" id="admin-card-detail">Veriler yükleniyor</div></article>
         </section>
 
         <section class="grid-2">
           <article class="card-box">
-            <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 12h.01M15 12h.01M9 17h6"/></svg></span><div><h3>Laboratuvar Kapısı</h3><small>Canlı altyapı kontrolü</small></div></div><span class="badge badge-success">Sistem çevrimiçi</span></div>
-            <div class="card-body"><div class="status-list"><div class="status-row"><span class="status-label">Kapı kilit durumu</span><strong class="status-value success">Kilitli (Güvenli)</strong></div><div class="status-row"><span class="status-label">Fiziksel RFID okuyucu</span><strong class="status-value success">Bağlı</strong></div><div class="status-row"><span class="status-label">Son giriş denemesi</span><strong class="status-value">14:32 (Başarılı)</strong></div></div></div>
+            <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 12h.01M15 12h.01M9 17h6"/></svg></span><div><h3>Laboratuvar Kapısı</h3><small>Canlı altyapı kontrolü</small></div></div><span class="badge badge-neutral" id="admin-infra-state">Durum yükleniyor</span></div>
+            <div class="card-body"><div class="status-list"><div class="status-row"><span class="status-label">Kapı durumu</span><strong class="status-value" id="admin-door-state">Yükleniyor</strong></div><div class="status-row"><span class="status-label">Cihaz bağlantısı</span><strong class="status-value" id="admin-device-state">Yükleniyor</strong></div><div class="status-row"><span class="status-label">Son giriş denemesi</span><strong class="status-value" id="admin-last-access">Yükleniyor</strong></div></div></div>
           </article>
           <article class="card-box">
             <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a10 10 0 1 0 10 10M12 6v6l4 2"/></svg></span><div><h3>Hızlı İşlemler</h3><small>Sık kullanılan yönetim bağlantıları</small></div></div></div>
-            <div class="card-body"><div class="activity-list"><a class="activity-item" href="yetkilendirme.html" style="text-decoration:none"><span class="activity-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span><div class="activity-content"><strong>Kart yetkilendirme</strong><p>Tanımlı kullanıcı ve kart yetkilerini yönetin.</p></div><span class="activity-time">Aç</span></a><a class="activity-item" href="ariza-gecmisi.html" style="text-decoration:none"><span class="activity-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3"/></svg></span><div class="activity-content"><strong>Arıza kayıtları</strong><p>Açık ve çözülen teknik bildirimleri inceleyin.</p></div><span class="activity-time">Aç</span></a></div></div>
+            <div class="card-body"><div class="activity-list"><a class="activity-item" href="yetkilendirme.html"><span class="activity-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span><div class="activity-content"><strong>Kart yetkilendirme</strong><p>Tanımlı kullanıcı ve kart yetkilerini yönetin.</p></div><span class="activity-time">Aç</span></a><a class="activity-item" href="ariza-gecmisi.html"><span class="activity-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3"/></svg></span><div class="activity-content"><strong>Arıza kayıtları</strong><p>Açık ve çözülen teknik bildirimleri inceleyin.</p></div><span class="activity-time">Aç</span></a></div></div>
           </article>
         </section>
 
         <section class="card-box">
           <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span><div><h3>Son Kapı Giriş Kayıtları</h3><small>Yakın zamanda gerçekleşen erişimler</small></div></div><a class="section-link" href="gecmis-girisler.html">Tüm geçmiş <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 18 6-6-6-6"/></svg></a></div>
-          <div class="table-toolbar"><div class="filter-row"><label for="admin-date-filter">Tarihe göre filtrele</label><input id="admin-date-filter" type="date" class="date-search-bar" data-table-filter="admin-access-table" data-count-target="admin-access-count"></div><span class="badge badge-neutral" id="admin-access-count">3 kayıt</span></div>
+          <div class="table-toolbar">
+            <div class="filter-row">
+              <div class="filter-field">
+                <label for="admin-date-filter">Kayıt tarihi</label>
+                <div class="filter-input-wrap">
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 2v4M16 2v4M3 10h18"/><rect width="18" height="18" x="3" y="4" rx="2"/></svg>
+                  <input id="admin-date-filter" type="date" class="date-search-bar" data-table-filter="admin-access-table" data-count-target="admin-access-count" aria-controls="admin-access-table">
+                </div>
+              </div>
+              <button type="button" class="btn-secondary filter-clear-btn" data-filter-clear="admin-date-filter" aria-controls="admin-access-table" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                Temizle
+              </button>
+            </div>
+            <div class="filter-meta"><span class="badge badge-neutral" id="admin-access-count" aria-live="polite">0 kayıt</span></div>
+          </div>
           <div class="table-wrap"><table id="admin-access-table"><thead><tr><th>Saat</th><th>Kullanıcı</th><th>Rol</th><th>Giriş Yöntemi</th><th>Durum</th></tr></thead><tbody>
-            <tr data-date="22.07.2026"><td class="cell-primary">14:32</td><td class="cell-primary">Dr. Ahmet Yılmaz</td><td>Hoca</td><td><span class="method-cell"><span class="method-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m12 11 8-8M15 6l3 3"/></svg></span>Günlük Şifre</span></td><td><span class="badge badge-success">Başarılı</span></td></tr>
-            <tr data-date="22.07.2026"><td class="cell-primary">14:28</td><td class="cell-primary">Mehmet Can</td><td>Öğrenci</td><td><span class="method-cell"><span class="method-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M3 10h18"/></svg></span>Kart</span></td><td><span class="badge badge-success">Başarılı</span></td></tr>
-            <tr data-date="22.07.2026"><td class="cell-primary">14:10</td><td class="cell-primary">Bilinmeyen</td><td>-</td><td><span class="method-cell"><span class="method-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m12 11 8-8M15 6l3 3"/></svg></span>Günlük Şifre</span></td><td><span class="badge badge-danger">Hatalı Şifre</span></td></tr>
           </tbody></table></div>
         </section>
       </div>
