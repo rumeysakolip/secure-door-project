@@ -30,7 +30,7 @@ services:
       - kapi-network
 
   mqtt:
-    image: eclipse-mosquitto:latest
+    image: eclipse-mosquitto:2.0
     container_name: kapi-sistemi-mqtt
 
     ports:
@@ -38,7 +38,7 @@ services:
       - "9001:9001"
 
     volumes:
-      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ./mosquitto:/mosquitto/config
 
     restart: unless-stopped
 
@@ -99,4 +99,3 @@ volumes:
 networks:
   kapi-network:
     driver: bridge
-  
