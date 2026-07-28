@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const issueReportService = require('../services/issueReportService');
+const { authenticateToken, requireAdminOrHoca } = require('../middlewares/authMiddleware');
 
 // POST /api/arizalar - QR kod veya form ile yeni arıza bildirimi yapma
+// NOT: Bu, QR kod okutan herkesin (giriş yapmadan) kullandığı bir form,
+// bu yüzden bilerek korumasız bırakıldı.
 router.post('/', async (req, res) => {
     try {
         const { reportedBy, issueType, description } = req.body;
@@ -31,7 +34,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/arizalar - Tüm arıza bildirimlerini listeleme (Yönetici Paneli)
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, requireAdminOrHoca, async (req, res) => {
     try {
         const reports = await issueReportService.getAllIssueReports();
         return res.json({ success: true, data: reports });
@@ -41,7 +44,7 @@ router.get('/', async (req, res) => {
 });
 
 // PATCH /api/arizalar/:id - Arıza durumunu güncelleme (OPEN, IN_PROGRESS, RESOLVED)
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', authenticateToken, requireAdminOrHoca, async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
