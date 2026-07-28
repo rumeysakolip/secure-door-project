@@ -25,10 +25,11 @@ enum KullaniciRol {
 }
 
 enum KartDurum {
-  aktif
-  kayip
-  iptal
-  hasarli
+    aktif
+    onay_bekliyor
+    kayip
+    iptal
+    hasarli
 }
 
 enum KartYetkilendirmeDurum {
@@ -252,9 +253,6 @@ model CihazKapiAtama {
   @@map("cihaz_kapi_atama")
 }
 
-// ============================================================
-// 8. Cihaz Durumu (Monitoring)
-// ============================================================
 
 // ============================================================
 // 8. Cihaz Durumu (Monitoring)
