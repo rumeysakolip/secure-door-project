@@ -65,7 +65,14 @@ app.use('/api/auth', authRotalari);
 
 // Endpoint Bağlantıları
 app.use('/api/birimler', birimRotalari);
-app.use('/api/kullanicilar', kullaniciRotalari);
+
+app.use(
+    '/api/kullanicilar',
+    authenticateToken,
+    requireAdmin,
+    kullaniciRotalari
+);
+
 app.use('/api/kartlar', kartRotalari);
 app.use('/api/kart-yetkilendirmeler', kartYetkilendirmeRotalari);
 app.use('/api/kapilar', kapiRotalari);
@@ -78,6 +85,7 @@ app.use('/api/gruplar', grupRotalari);
 app.use('/api/yetki-kurallari', yetkiKuraliRotalari);
 
 app.use('/api/arizalar', arizaRotalari);
+
 // -------------------------------------------------------------
 // EKLEYEBİLECEĞİN YERLER: (Rotalar bittikten sonra)
 // -------------------------------------------------------------

@@ -83,7 +83,7 @@ router.get('/me', authenticateToken, async (req, res) => {
 });
 
 // POST /api/auth/logout
-router.post('/logout', (req, res) => {
+router.post('/logout', authenticateToken, (req, res) => {
   return res.json({ message: 'Çıkış yapıldı.' });
 });
 

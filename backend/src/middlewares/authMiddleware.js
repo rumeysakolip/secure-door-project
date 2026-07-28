@@ -29,8 +29,18 @@ const requireAdmin = (req, res, next) => {
   }
 };
 
+// 3. Admin veya Hoca Yetkisi Kontrolü Middleware (Web paneli işlemleri için)
+const requireAdminOrHoca = (req, res, next) => {
+  if (req.user && (req.user.rol === 'admin' || req.user.rol === 'hoca')) {
+    next();
+  } else {
+    return res.status(403).json({ message: 'Bu işlem için yetkiniz yok.' });
+  }
+};
+
 module.exports = {
   authenticateToken,
   requireAdmin,
+  requireAdminOrHoca,
   JWT_SECRET
 };

@@ -2,7 +2,8 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/prisma');
 const { refreshSingleUserPin } = require('../services/pinService');
-
+const { authenticateToken, requireAdminOrHoca } = require('../middlewares/authMiddleware');
+router.use(authenticateToken, requireAdminOrHoca);
 // Kullanıcıları listele (durum ve rol parametrelerine göre isteğe bağlı filtreleme ile)
 router.get('/', async (req, res) => {
     try {
