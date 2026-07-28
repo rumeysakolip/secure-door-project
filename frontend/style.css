@@ -2101,3 +2101,6 @@ button.is-loading::after {
   cursor: not-allowed;
   opacity: 0.58;
 }
+html.auth-pending body {
+  visibility: hidden;
+}

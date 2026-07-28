@@ -54,6 +54,10 @@ function redirectToLogin() {
     }
 }
 
+function revealAuthenticatedPage() {
+    document.documentElement.classList.remove('auth-pending');
+}
+
 async function apiRequest(endpoint, options = {}) {
     const requestOptions = { ...options };
     const headers = new Headers(options.headers || {});
@@ -365,23 +369,11 @@ async function requireAuthentication() {
 
     try {
         await getCurrentUser();
+        revealAuthenticatedPage();
         return true;
     } catch (error) {
-        if (error.status === 401 || error.status === 403) {
-            clearAuthToken();
-            redirectToLogin();
-            return false;
-        }
-
-        let pageStatus = document.querySelector('[data-page-status]');
-        if (!pageStatus) {
-            pageStatus = createElement('p', 'form-message form-message-error');
-            pageStatus.dataset.pageStatus = 'true';
-            pageStatus.setAttribute('role', 'alert');
-            const container = document.querySelector('.container, .standalone-page');
-            container?.prepend(pageStatus);
-        }
-        if (pageStatus) showError(pageStatus, handleApiError(error));
+        clearAuthToken();
+        redirectToLogin();
         return false;
     }
 }
@@ -395,7 +387,7 @@ function getRoleDestination(role) {
     return destinations[role] || null;
 }
 
-function initLogin() {
+async function initLogin() {
     const form = document.getElementById('login-form');
     if (!form) return;
 
@@ -406,6 +398,19 @@ function initLogin() {
     const forgotButton = document.getElementById('forgot-password-button');
     const passwordToggle = document.getElementById('password-toggle');
     const rememberInput = document.getElementById('login-remember');
+
+    if (getAuthToken()) {
+        try {
+            const user = await getCurrentUser();
+            const destination = getRoleDestination(user?.rol);
+            if (destination) {
+                window.location.replace(destination);
+                return;
+            }
+        } catch (error) {
+            clearAuthToken();
+        }
+    }
 
     forgotButton?.setAttribute('title', 'Backend şifre sıfırlama endpointi bulunmuyor');
     forgotButton?.addEventListener('click', () => {
@@ -1097,7 +1102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const page = document.body.dataset.page;
     if (page === 'login') {
-        initLogin();
+        await initLogin();
         return;
     }
 
