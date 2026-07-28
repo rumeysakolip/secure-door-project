@@ -86,7 +86,7 @@ bool MqttManager::publishPasswordAck(bool success) {
     return _mqttClient.publish(topic.c_str(), payload.c_str());
 }
 
-bool MqttManager::isConnected() const {
+bool MqttManager::isConnected() {
     return _mqttClient.connected();
 }
 

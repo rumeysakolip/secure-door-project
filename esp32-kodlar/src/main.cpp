@@ -24,10 +24,16 @@ static byte colPins[KeypadInput::COLUMN_COUNT] = {
 CardReader cardReader(RFID_SS_PIN, RFID_RST_PIN, RFID_SCK_PIN, RFID_MISO_PIN, RFID_MOSI_PIN);
 MqttManager mqttManager(MQTT_BROKER_HOST, MQTT_BROKER_PORT);
 LockController lock(RELAY_PIN, BUZZER_PIN);
-NetworkManager network(WIFI_SSID, WIFI_PASSWORD);
+NetworkManager network(WIFI_SSID, WIFI_IDENTITY, WIFI_USERNAME, WIFI_PASSWORD);
 AccessControl accessControl;
 AlertSystem alertSystem(BUZZER_PIN, LED_GREEN_PIN, true, true);
-KeypadInput keypadInput(rowPins, colPins, KEYPAD_MIN_LEN, KEYPAD_MAX_LEN);
+KeypadInput keypadInput(
+    rowPins,
+    colPins,
+    KEYPAD_MIN_LEN,
+    KEYPAD_MAX_LEN,
+    KEYPAD_TIMEOUT
+);
 
 static uint32_t lastHeartbeatMs = 0;
 

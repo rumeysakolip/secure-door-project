@@ -8,6 +8,8 @@
 class NetworkManager {
 private:
     const char* ssid;
+    const char* identity;
+    const char* username;
     const char* password;
     
     unsigned long previousMillis;
@@ -20,7 +22,12 @@ private:
 
 public:
     // Kurucu: Hangi ağa bağlanacağımızı parametre olarak alır
-    NetworkManager(const char* wifi_ssid, const char* wifi_password);
+    NetworkManager(
+        const char* wifi_ssid,
+        const char* wifi_identity,
+        const char* wifi_username,
+        const char* wifi_password
+    );
     
     void begin();
     void update(); // Sistemin kalbi gibi sürekli dönecek

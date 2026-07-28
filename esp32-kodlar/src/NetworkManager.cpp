@@ -1,8 +1,16 @@
 #include "NetworkManager.h"
+#include <esp_wpa2.h>
 
 // 1. Kurucu: Wi-Fi bilgilerini al ve değişkenleri sıfırla
-NetworkManager::NetworkManager(const char* wifi_ssid, const char* wifi_password) {
+NetworkManager::NetworkManager(
+    const char* wifi_ssid,
+    const char* wifi_identity,
+    const char* wifi_username,
+    const char* wifi_password
+) {
     ssid = wifi_ssid;
+    identity = wifi_identity;
+    username = wifi_username;
     password = wifi_password;
     previousMillis = 0;
     timeSynced = false;
@@ -12,8 +20,28 @@ NetworkManager::NetworkManager(const char* wifi_ssid, const char* wifi_password)
 void NetworkManager::begin() {
     Serial.begin(115200); // Terminal (Seri Port) ekranı için
     
+    WiFi.disconnect(true);
     WiFi.mode(WIFI_STA); // ESP32'yi bir istemci (istasyon) moduna alıyoruz
-    WiFi.begin(ssid, password);
+
+    if (identity != nullptr && strlen(identity) > 0) {
+        esp_wifi_sta_wpa2_ent_set_identity(
+            reinterpret_cast<const uint8_t*>(identity),
+            strlen(identity)
+        );
+        esp_wifi_sta_wpa2_ent_set_username(
+            reinterpret_cast<const uint8_t*>(username),
+            strlen(username)
+        );
+        esp_wifi_sta_wpa2_ent_set_password(
+            reinterpret_cast<const uint8_t*>(password),
+            strlen(password)
+        );
+        esp_wifi_sta_wpa2_ent_set_ttls_phase2_method(ESP_EAP_TTLS_PHASE2_PAP);
+        esp_wifi_sta_wpa2_ent_enable();
+        WiFi.begin(ssid);
+    } else {
+        WiFi.begin(ssid, password);
+    }
     
     Serial.print("\n[Wi-Fi] Baglaniliyor: ");
     Serial.println(ssid);

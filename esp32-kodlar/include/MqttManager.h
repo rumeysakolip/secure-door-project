@@ -59,7 +59,7 @@ public:
     bool publishEntryEvent(const EntryEvent &event);
     bool publishHeartbeat(int cihazId = 1);
     bool publishPasswordAck(bool success);
-    bool isConnected() const;
+    bool isConnected();
 
     bool hasPendingCommand() const;
     DeviceCommand popPendingCommand();
