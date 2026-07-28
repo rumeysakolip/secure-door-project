@@ -1,7 +1,7 @@
 const API_CONFIG = Object.freeze({
     baseUrl: 'http://localhost:3000',
-    // Arıza route'u backend'e bağlandığında false yapılmalıdır.
-    useMockData: true
+    // Geliştirme fallback'i gerekirse true yapılabilir; üretimde sahte veri gösterilmez.
+    useMockData: false
 });
 
 const AUTH_TOKEN_KEY = 'securelab_auth_token';
@@ -22,19 +22,24 @@ class ApiError extends Error {
 }
 
 function getAuthToken() {
-    return sessionStorage.getItem(AUTH_TOKEN_KEY);
+    return sessionStorage.getItem(AUTH_TOKEN_KEY)
+        || localStorage.getItem(AUTH_TOKEN_KEY);
 }
 
-function setAuthToken(token) {
+function setAuthToken(token, persist = false) {
     if (typeof token !== 'string' || !token.trim()) {
         throw new Error('Geçerli bir oturum anahtarı alınamadı.');
     }
 
-    sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+    const selectedStorage = persist ? localStorage : sessionStorage;
+    const unusedStorage = persist ? sessionStorage : localStorage;
+    unusedStorage.removeItem(AUTH_TOKEN_KEY);
+    selectedStorage.setItem(AUTH_TOKEN_KEY, token);
 }
 
 function clearAuthToken() {
     sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
     appState.currentUser = null;
 }
 
@@ -91,6 +96,7 @@ async function apiRequest(endpoint, options = {}) {
     if (!response.ok) {
         const message = responseData?.message
             || responseData?.hata
+            || responseData?.error
             || (response.status === 403
                 ? 'Bu işlem için yetkiniz bulunmuyor.'
                 : 'İstek tamamlanamadı.');
@@ -120,6 +126,7 @@ function getStateCell(container) {
     if (!(container instanceof HTMLTableSectionElement)) return container;
 
     const row = document.createElement('tr');
+    row.className = 'integration-state-row';
     const cell = document.createElement('td');
     const table = container.closest('table');
     cell.colSpan = table?.querySelectorAll('thead th').length || 1;
@@ -131,21 +138,21 @@ function getStateCell(container) {
 function showLoading(container) {
     if (!container) return;
     const target = getStateCell(container);
-    target.className = 'integration-state integration-loading';
+    target.className = 'api-state integration-loading';
     target.textContent = 'Veriler yükleniyor…';
 }
 
 function showEmpty(container, message = 'Kayıt bulunamadı.') {
     if (!container) return;
     const target = getStateCell(container);
-    target.className = 'integration-state integration-empty';
+    target.className = 'api-state integration-empty';
     target.textContent = message;
 }
 
 function showError(container, message) {
     if (!container) return;
     const target = getStateCell(container);
-    target.className = 'integration-state integration-error';
+    target.className = 'api-state form-message-error integration-error';
     target.textContent = message;
     target.hidden = false;
 }
@@ -204,7 +211,7 @@ function setText(id, value) {
 function setInlineMessage(element, message = '', type = 'info') {
     if (!element) return;
     element.textContent = message;
-    element.className = `inline-message inline-message-${type}`;
+    element.className = `form-message form-message-${type}`;
     element.hidden = !message;
 }
 
@@ -228,25 +235,32 @@ function applyTableFilter(filterInput) {
         emptyRow.className = 'filter-empty-row';
         const emptyCell = document.createElement('td');
         emptyCell.colSpan = table.querySelectorAll('thead th').length || 1;
-        emptyCell.textContent = 'Seçilen tarihe uygun kayıt bulunamadı.';
+        emptyCell.textContent = filterInput.dataset.emptyMessage || 'Seçilen filtreye uygun kayıt bulunamadı.';
         emptyRow.appendChild(emptyCell);
         tableBody.appendChild(emptyRow);
     }
 
     const filterValue = normalizeDateValue(filterInput.value).toLocaleLowerCase('tr-TR');
+    const filterMode = filterInput.dataset.filterMode || 'date';
     let visibleCount = 0;
 
     rows.forEach((row) => {
-        const rowDate = normalizeDateValue(row.dataset.date || row.cells[0]?.textContent)
-            .toLocaleLowerCase('tr-TR');
-        const visible = !filterValue || rowDate.includes(filterValue);
+        const searchableValue = filterMode === 'text'
+            ? row.textContent
+            : row.dataset.date || row.cells[0]?.textContent;
+        const normalizedRowValue = normalizeDateValue(searchableValue).toLocaleLowerCase('tr-TR');
+        const visible = !filterValue || normalizedRowValue.includes(filterValue);
         row.hidden = !visible;
         if (visible) visibleCount += 1;
     });
 
     emptyRow.hidden = visibleCount !== 0 || rows.length === 0;
     const countElement = document.getElementById(filterInput.dataset.countTarget);
-    if (countElement) countElement.textContent = `${visibleCount} kayıt`;
+    const countLabel = filterInput.dataset.countLabel || 'kayıt';
+    if (countElement) countElement.textContent = `${visibleCount} ${countLabel}`;
+
+    const clearButton = document.querySelector(`[data-filter-clear="${filterInput.id}"]`);
+    if (clearButton) clearButton.disabled = !filterInput.value;
 }
 
 function initTableFilters() {
@@ -254,11 +268,41 @@ function initTableFilters() {
         filterInput.addEventListener('input', () => applyTableFilter(filterInput));
         filterInput.addEventListener('change', () => applyTableFilter(filterInput));
     });
+
+    document.querySelectorAll('[data-filter-clear]').forEach((button) => {
+        const filterInput = document.getElementById(button.dataset.filterClear);
+        if (!filterInput) return;
+        button.addEventListener('click', () => {
+            filterInput.value = '';
+            applyTableFilter(filterInput);
+            filterInput.focus();
+        });
+    });
 }
 
 function refreshTableFilter(tableId) {
     const filter = document.querySelector(`[data-table-filter="${tableId}"]`);
-    if (filter) applyTableFilter(filter);
+    if (!filter) return;
+
+    const listId = filter.getAttribute('list');
+    const suggestions = listId ? document.getElementById(listId) : null;
+    const table = document.getElementById(tableId);
+    if (suggestions && table) {
+        const dates = new Set(
+            Array.from(table.querySelectorAll('tbody tr[data-date]'))
+                .map((row) => row.dataset.date)
+                .filter(Boolean)
+        );
+        const fragment = document.createDocumentFragment();
+        dates.forEach((date) => {
+            const option = document.createElement('option');
+            option.value = date;
+            fragment.appendChild(option);
+        });
+        suggestions.replaceChildren(fragment);
+    }
+
+    applyTableFilter(filter);
 }
 
 function initNavigation() {
@@ -329,7 +373,14 @@ async function requireAuthentication() {
             return false;
         }
 
-        const pageStatus = document.querySelector('[data-page-status]');
+        let pageStatus = document.querySelector('[data-page-status]');
+        if (!pageStatus) {
+            pageStatus = createElement('p', 'form-message form-message-error');
+            pageStatus.dataset.pageStatus = 'true';
+            pageStatus.setAttribute('role', 'alert');
+            const container = document.querySelector('.container, .standalone-page');
+            container?.prepend(pageStatus);
+        }
         if (pageStatus) showError(pageStatus, handleApiError(error));
         return false;
     }
@@ -348,15 +399,24 @@ function initLogin() {
     const form = document.getElementById('login-form');
     if (!form) return;
 
-    const emailInput = document.getElementById('login-email');
-    const pinInput = document.getElementById('login-pin');
+    const emailInput = document.getElementById('login-identity');
+    const pinInput = document.getElementById('login-password');
     const submitButton = document.getElementById('login-submit');
     const message = document.getElementById('login-message');
-    const forgotLink = document.getElementById('forgot-password');
+    const forgotButton = document.getElementById('forgot-password-button');
+    const passwordToggle = document.getElementById('password-toggle');
+    const rememberInput = document.getElementById('login-remember');
 
-    forgotLink?.addEventListener('click', (event) => {
-        event.preventDefault();
+    forgotButton?.setAttribute('title', 'Backend şifre sıfırlama endpointi bulunmuyor');
+    forgotButton?.addEventListener('click', () => {
         setInlineMessage(message, 'Şifre sıfırlama endpointi backend’de bulunmuyor.', 'warning');
+    });
+
+    passwordToggle?.addEventListener('click', () => {
+        const willShow = pinInput.type === 'password';
+        pinInput.type = willShow ? 'text' : 'password';
+        passwordToggle.setAttribute('aria-pressed', String(willShow));
+        passwordToggle.setAttribute('aria-label', willShow ? 'Şifreyi gizle' : 'Şifreyi göster');
     });
 
     form.addEventListener('submit', async (event) => {
@@ -369,7 +429,7 @@ function initLogin() {
             return;
         }
 
-        const originalText = submitButton.textContent;
+        const originalContent = Array.from(submitButton.childNodes, (node) => node.cloneNode(true));
         submitButton.disabled = true;
         submitButton.textContent = 'Giriş yapılıyor…';
         setInlineMessage(message);
@@ -385,13 +445,13 @@ function initLogin() {
                 throw new ApiError('Giriş yanıtındaki token veya rol bilgisi doğrulanamadı.');
             }
 
-            setAuthToken(response.token);
+            setAuthToken(response.token, Boolean(rememberInput?.checked));
             window.location.assign(destination);
         } catch (error) {
             clearAuthToken();
             setInlineMessage(message, handleApiError(error), 'error');
             submitButton.disabled = false;
-            submitButton.textContent = originalText;
+            submitButton.replaceChildren(...originalContent);
         }
     });
 }
@@ -405,6 +465,8 @@ function renderKullanicilar(data) {
     setText('admin-user-count', String(appState.kullanicilar.length));
     setText('auth-user-count', String(appState.kullanicilar.length));
     setText('auth-user-count-badge', `${appState.kullanicilar.length} tanımlı kullanıcı`);
+    setText('authorization-user-count', String(appState.kullanicilar.length));
+    setText('admin-user-detail', `${appState.kullanicilar.length} kullanıcı backend’den alındı`);
 
     const select = document.getElementById('auth-full-name');
     if (!select) return;
@@ -430,6 +492,7 @@ async function getKartlar() {
 function renderKartlar(data) {
     appState.kartlar = Array.isArray(data) ? data : [];
     setText('admin-card-count', String(appState.kartlar.length));
+    setText('admin-card-detail', `${appState.kartlar.length} kart backend’den alındı`);
 
     const list = document.getElementById('rfid-card-options');
     if (!list) return;
@@ -455,6 +518,11 @@ function renderKapilar(data) {
         ? `${doors.length} kapı kaydından ${activeDoors.length} tanesi aktif`
         : 'Backend kapı kaydı döndürmedi');
     setText('admin-door-status', doors[0]?.durum ? humanizeEnum(doors[0].durum) : 'Kayıt yok');
+    setText('dashboard-door-value', String(doors.length));
+    setText('dashboard-door-detail', doors.length
+        ? `${activeDoors.length} kapı aktif`
+        : 'Backend kapı kaydı döndürmedi');
+    setText('dashboard-door-state', doors[0]?.durum ? humanizeEnum(doors[0].durum) : 'Kayıt yok');
 }
 
 async function getCihazlar() {
@@ -469,6 +537,9 @@ function renderCihazlar(data) {
     setText('admin-device-detail', devices.length
         ? `${devices.length} cihaz kaydından ${activeDevices.length} tanesi aktif`
         : 'Backend cihaz kaydı döndürmedi');
+    setText('dashboard-device-state', devices.length
+        ? `${activeDevices.length}/${devices.length} aktif`
+        : 'Kayıt yok');
 }
 
 async function getCihazDurumlari() {
@@ -478,11 +549,17 @@ async function getCihazDurumlari() {
 function renderCihazDurumlari(data) {
     const statuses = Array.isArray(data) ? data : [];
     const latest = [...statuses].sort((a, b) => {
-        return new Date(b.olcumTamani || b.kayitTamani || 0) - new Date(a.olcumTamani || a.kayitTamani || 0);
+        return new Date(b.sonHeartbeat || b.guncellenmeTarihi || 0) - new Date(a.sonHeartbeat || a.guncellenmeTarihi || 0);
     })[0];
 
-    setText('admin-device-connection', latest?.baglantiDurumu
-        ? humanizeEnum(latest.baglantiDurumu)
+    setText('admin-device-connection', latest?.cihazDurumTip
+        ? humanizeEnum(latest.cihazDurumTip)
+        : 'Durum kaydı yok');
+    setText('admin-device-state', latest?.cihazDurumTip
+        ? humanizeEnum(latest.cihazDurumTip)
+        : 'Durum kaydı yok');
+    setText('dashboard-heartbeat', latest?.sonHeartbeat || latest?.guncellenmeTarihi
+        ? formatDateTime(latest.sonHeartbeat || latest.guncellenmeTarihi)
         : 'Durum kaydı yok');
 }
 
@@ -511,7 +588,10 @@ function humanizeEnum(value) {
         kart: 'RFID Kart',
         pin: 'PIN',
         izin: 'İzin verildi',
-        red: 'Reddedildi'
+        red: 'Reddedildi',
+        OPEN: 'Açık',
+        IN_PROGRESS: 'İnceleniyor',
+        RESOLVED: 'Çözüldü'
     };
     return labels[value] || String(value || '—');
 }
@@ -526,6 +606,9 @@ function renderYetkilendirmeler(data) {
     setText('auth-active-count', String(activeCount));
     setText('auth-passive-count', String(passiveCount));
     setText('auth-table-count', `${appState.yetkilendirmeler.length} yetki`);
+    setText('authorization-active-count', String(activeCount));
+    setText('authorization-passive-count', String(passiveCount));
+    setText('authorization-system-state', 'Yetkiler güncel');
 
     if (!appState.yetkilendirmeler.length) {
         showEmpty(tableBody, 'Tanımlı kart yetkisi bulunamadı.');
@@ -555,6 +638,7 @@ function renderYetkilendirmeler(data) {
         fragment.appendChild(row);
     });
     tableBody.replaceChildren(fragment);
+    refreshTableFilter('authorized-users-table');
 }
 
 async function getErisimKayitlari(limit = 100, offset = 0) {
@@ -607,7 +691,12 @@ function renderAccessTable(tableId, data, compact = false) {
 
     if (!records.length) {
         showEmpty(tableBody, 'Erişim kaydı bulunamadı.');
-        const countTarget = tableId === 'admin-access-table' ? 'admin-access-count' : 'history-access-count';
+        const countTargets = {
+            'admin-access-table': 'admin-access-count',
+            'history-access-table': 'history-access-count',
+            'dashboard-access-table': 'dashboard-access-count'
+        };
+        const countTarget = countTargets[tableId];
         setText(countTarget, '0 kayıt');
         return;
     }
@@ -629,6 +718,8 @@ function renderAccessMetrics(data) {
     setText('history-denied-count', `${denied} Kayıt`);
     setText('history-card-count', `${card} Geçiş`);
     setText('history-pin-count', `${pin} Geçiş`);
+    setText('dashboard-success-value', String(allowed));
+    setText('dashboard-denied-value', String(denied));
 }
 
 function renderAdminLastAccess(data) {
@@ -640,6 +731,9 @@ function renderAdminLastAccess(data) {
         ? `${humanizeEnum(latest.dogrulamaYontemi)} • ${latest.kapi?.ad || 'Kapı bilgisi yok'}`
         : 'Backend erişim kaydı döndürmedi');
     setText('admin-last-attempt', latest
+        ? `${formatTime(latest.olayTamani || latest.kayitTamani)} (${humanizeEnum(latest.sonuc)})`
+        : 'Kayıt yok');
+    setText('admin-last-access', latest
         ? `${formatTime(latest.olayTamani || latest.kayitTamani)} (${humanizeEnum(latest.sonuc)})`
         : 'Kayıt yok');
 }
@@ -678,6 +772,39 @@ async function initAdminPage() {
         setInlineMessage(status, `Bazı yönetim verileri alınamadı: ${errors.join(' ')}`, 'error');
     } else {
         setInlineMessage(status, 'Yönetim verileri backend üzerinden güncellendi.', 'success');
+        setText('admin-system-state', 'Sistem verileri güncel');
+        setText('admin-infra-state', 'Canlı API');
+    }
+}
+
+async function initDashboardPage() {
+    const tableBody = document.querySelector('#dashboard-access-table tbody');
+    showLoading(tableBody);
+
+    try {
+        const [users, doors, devices, statuses, records] = await Promise.all([
+            getKullanicilar(),
+            getKapilar(),
+            getCihazlar(),
+            getCihazDurumlari(),
+            getErisimKayitlari(20, 0)
+        ]);
+
+        appState.kullanicilar = Array.isArray(users) ? users : [];
+        const activeUsers = appState.kullanicilar.filter((user) => user.durum === 'aktif');
+        setText('dashboard-user-value', String(activeUsers.length));
+        setText('dashboard-user-detail', `${appState.kullanicilar.length} kullanıcıdan ${activeUsers.length} tanesi aktif`);
+        renderKapilar(doors);
+        renderCihazlar(devices);
+        renderCihazDurumlari(statuses);
+        renderAccessMetrics(records);
+        renderAccessTable('dashboard-access-table', records, false);
+        setText('dashboard-system-state', 'Sistem verileri güncel');
+        setText('dashboard-infra-state', 'Canlı API');
+    } catch (error) {
+        showError(tableBody, handleApiError(error));
+        setText('dashboard-system-state', 'Backend bağlantı hatası');
+        setText('dashboard-infra-state', 'Veri alınamadı');
     }
 }
 
@@ -701,6 +828,7 @@ async function initAuthorizationPage() {
         renderYetkilendirmeler(permissions);
     } catch (error) {
         showError(tableBody, handleApiError(error));
+        setText('authorization-system-state', 'Yetkiler yüklenemedi');
         setInlineMessage(message, handleApiError(error), 'error');
         return;
     }
@@ -794,9 +922,13 @@ async function renewCode() {
         const newPin = response?.veri?.yeniPin;
         if (!newPin) throw new ApiError('Backend yanıtında yeni PIN alanı bulunamadı.');
         code.textContent = newPin;
+        setText('pin-current-state', 'Yeni PIN hazır');
+        setText('pin-system-state', 'PIN backend üzerinden yenilendi');
         setInlineMessage(message, 'Yeni PIN oluşturuldu. Güvenli biçimde saklayın; sayfadan ayrıldığınızda tekrar gösterilmez.', 'success');
     } catch (error) {
         code.textContent = '••••••';
+        setText('pin-current-state', 'Üretilemedi');
+        setText('pin-system-state', 'PIN servisi hatası');
         setInlineMessage(message, handleApiError(error), 'error');
     } finally {
         button.disabled = false;
@@ -804,7 +936,10 @@ async function renewCode() {
 }
 
 function initTemporaryPinPage() {
-    document.getElementById('renew-code-button')?.addEventListener('click', renewCode);
+    const button = document.getElementById('renew-code-button');
+    if (!button) return;
+    button.disabled = false;
+    button.addEventListener('click', renewCode);
 }
 
 async function initAccessHistoryPage() {
@@ -814,34 +949,85 @@ async function initAccessHistoryPage() {
         const records = await getErisimKayitlari(100, 0);
         renderAccessTable('history-access-table', records, false);
         renderAccessMetrics(records);
+        setText('history-system-state', 'Kayıtlar güncel');
     } catch (error) {
         showError(tableBody, handleApiError(error));
         setText('history-access-count', '0 kayıt');
+        setText('history-system-state', 'Kayıtlar yüklenemedi');
     }
 }
 
-function initIssueHistoryPage() {
+async function getArizalar() {
+    const response = await apiRequest('/api/arizalar');
+    if (!response?.success || !Array.isArray(response.data)) {
+        throw new ApiError('Arıza listesi yanıtı doğrulanamadı.');
+    }
+    return response.data;
+}
+
+function renderArizalar(data) {
+    const records = Array.isArray(data) ? data : [];
+    const tableBody = document.querySelector('#fault-records-table tbody');
+    if (!tableBody) return;
+
+    const openCount = records.filter((record) => record.durum === 'OPEN' || record.durum === 'IN_PROGRESS').length;
+    const resolvedCount = records.filter((record) => record.durum === 'RESOLVED').length;
+    const latest = records[0];
+    setText('fault-open-count', String(openCount));
+    setText('fault-resolved-count', String(resolvedCount));
+    setText('fault-last-type', latest?.arizaTuru || 'Kayıt yok');
+    setText('fault-period', latest ? formatDate(latest.olusturulma) : 'Kayıt yok');
+    setText('fault-record-count', `${records.length} kayıt`);
+    setText('fault-system-state', 'Arıza kayıtları güncel');
+
+    if (!records.length) {
+        showEmpty(tableBody, 'Arıza bildirimi bulunamadı.');
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    records.forEach((record) => {
+        const row = document.createElement('tr');
+        row.dataset.date = formatDate(record.olusturulma);
+
+        const dateCell = document.createElement('td');
+        dateCell.append(
+            createElement('span', 'cell-primary', formatDate(record.olusturulma)),
+            createElement('span', 'cell-secondary', formatTime(record.olusturulma))
+        );
+        const descriptionCell = document.createElement('td');
+        descriptionCell.append(
+            createElement('span', 'cell-primary', record.arizaTuru || 'Tür belirtilmedi'),
+            createElement('span', 'cell-secondary', record.aciklama || 'Açıklama yok'),
+            createElement('span', 'cell-secondary', record.bildiren ? `Bildiren: ${record.bildiren}` : 'Bildiren: Anonim')
+        );
+        const photoCell = createElement('td', 'cell-secondary', 'Fotoğraf API’de desteklenmiyor');
+        const statusCell = document.createElement('td');
+        const variant = record.durum === 'RESOLVED'
+            ? 'success'
+            : record.durum === 'IN_PROGRESS' ? 'warning' : 'danger';
+        statusCell.appendChild(createBadge(humanizeEnum(record.durum), variant));
+        row.append(dateCell, descriptionCell, photoCell, statusCell);
+        fragment.appendChild(row);
+    });
+    tableBody.replaceChildren(fragment);
+    refreshTableFilter('fault-records-table');
+}
+
+async function initIssueHistoryPage() {
     const status = document.getElementById('fault-integration-status');
     const tableBody = document.querySelector('#fault-records-table tbody');
+    showLoading(tableBody);
+    setInlineMessage(status, 'Arıza kayıtları backend’den yükleniyor…', 'info');
 
-    // TODO(frontend-integration): issueReportService bir Express route'una bağlandığında gerçek GET isteği eklenmeli.
-    setInlineMessage(status, 'Arıza servisi henüz backend route’una bağlanmamış. Aşağıdaki kayıtlar MOCK veridir.', 'warning');
-
-    if (API_CONFIG.useMockData) {
-        tableBody?.querySelectorAll('tr').forEach((row) => {
-            row.dataset.mock = 'true';
-            row.querySelectorAll('a').forEach((link) => {
-                link.removeAttribute('href');
-                link.setAttribute('aria-disabled', 'true');
-                link.title = 'Gerçek fotoğraf URL’si bulunmuyor';
-            });
-        });
-        setText('fault-record-count', `MOCK • ${tableBody?.querySelectorAll('tr').length || 0} kayıt`);
-        refreshTableFilter('fault-records-table');
-    } else {
-        tableBody?.replaceChildren();
-        showEmpty(tableBody, 'Arıza servisi bağlı değil; üretim modunda mock veri gösterilmiyor.');
+    try {
+        renderArizalar(await getArizalar());
+        setInlineMessage(status, 'Arıza servisi gerçek /api/arizalar endpointine bağlı.', 'success');
+    } catch (error) {
+        showError(tableBody, handleApiError(error));
         setText('fault-record-count', '0 kayıt');
+        setText('fault-system-state', 'Arıza servisine ulaşılamadı');
+        setInlineMessage(status, handleApiError(error), 'error');
     }
 }
 
@@ -853,11 +1039,54 @@ function updateFileName(input) {
 function initIssueReportPage() {
     const form = document.getElementById('issue-report-form');
     const message = document.getElementById('issue-report-message');
-    // TODO(frontend-integration): issueReportService için POST route'u ve fotoğraf content-type sözleşmesi oluşturulduğunda bağlanmalı.
-    setInlineMessage(message, 'Arıza servisi henüz backend route’una bağlanmamış. Bildirim ve fotoğraf gönderimi şu anda devre dışıdır.', 'warning');
-    form?.addEventListener('submit', (event) => {
+    const submitButton = document.getElementById('issue-report-submit');
+    setInlineMessage(message, 'Metin bildirimi backend’e gönderilebilir. Fotoğraf yükleme API tarafından desteklenmiyor.', 'info');
+    document.getElementById('filePicker')?.setAttribute('disabled', '');
+    document.getElementById('cameraInput')?.setAttribute('disabled', '');
+    document.querySelectorAll('label[for="filePicker"], label[for="cameraInput"]').forEach((label) => {
+        label.setAttribute('aria-disabled', 'true');
+        label.title = 'Fotoğraf yükleme endpointi bulunmuyor';
+    });
+    if (submitButton) submitButton.disabled = false;
+
+    form?.addEventListener('submit', async (event) => {
         event.preventDefault();
-        setInlineMessage(message, 'Bildirim gönderilmedi: backend arıza route’u mevcut değil.', 'error');
+        const fullName = document.getElementById('report-full-name').value.trim();
+        const emailUser = document.getElementById('report-email').value.trim();
+        const issueType = document.getElementById('report-issue-type').value;
+        const description = document.getElementById('report-description').value.trim();
+
+        if (!fullName || !emailUser || !issueType || !description) {
+            setInlineMessage(message, 'Ad soyad, e-posta, arıza türü ve açıklama alanları zorunludur.', 'error');
+            return;
+        }
+
+        const originalContent = Array.from(submitButton.childNodes, (node) => node.cloneNode(true));
+        const reportedEmail = emailUser.includes('@') ? emailUser : `${emailUser}@subu.edu.tr`;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Bildirim gönderiliyor…';
+        setInlineMessage(message, 'Arıza bildirimi kaydediliyor…', 'info');
+
+        try {
+            const response = await apiRequest('/api/arizalar', {
+                method: 'POST',
+                body: {
+                    reportedBy: `${fullName} (${reportedEmail})`.slice(0, 128),
+                    issueType,
+                    description
+                }
+            });
+            if (!response?.success || !response?.report?.arizaId) {
+                throw new ApiError('Arıza kayıt yanıtı doğrulanamadı.');
+            }
+            form.reset();
+            setInlineMessage(message, response.message || 'Arıza bildirimi başarıyla kaydedildi.', 'success');
+        } catch (error) {
+            setInlineMessage(message, handleApiError(error), 'error');
+        } finally {
+            submitButton.disabled = false;
+            submitButton.replaceChildren(...originalContent);
+        }
     });
 }
 
@@ -879,6 +1108,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const initializers = {
         admin: initAdminPage,
+        dashboard: initDashboardPage,
         authorization: initAuthorizationPage,
         'temporary-pin': initTemporaryPinPage,
         'access-history': initAccessHistoryPage,

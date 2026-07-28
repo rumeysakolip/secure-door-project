@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Geçici Şifre Al | Lab Erişim Paneli</title>
   <link rel="stylesheet" href="style.css">
-  <script src="script.js?v=20260727-2" defer></script>
+  <script src="script.js?v=20260728-1" defer></script>
 </head>
-<body>
+<body data-page="temporary-pin" data-auth-required="true">
   <div class="app-shell">
     <nav class="navbar" id="main-navigation" aria-label="Ana navigasyon">
       <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span><div class="brand-copy"><div class="logo">SecureLab</div><small>Erişim Yönetim Platformu</small></div></div>
@@ -40,7 +40,7 @@
               <div class="code-display"><div class="code-label">Yeni üretilen 6 haneli şifre</div><div class="code-number" id="dailyCode">••••••</div></div>
               <div class="security-note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><span id="pin-validity-message">Yeni PIN üretildiğinde yalnızca bu ekranda gösterilir. Erişim kodunuzu yetkisiz kişilerle paylaşmayın.</span></div>
               <div id="pin-message" class="form-message" role="status" aria-live="polite" hidden></div>
-              <button type="button" class="btn-renew btn-block" id="renew-code-button" onclick="renewCode()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 11a8 8 0 1 0-2.3 5.7L20 14M20 20v-6h-6"/></svg>Yeni Şifre Üret</button>
+              <button type="button" class="btn-renew btn-block" id="renew-code-button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 11a8 8 0 1 0-2.3 5.7L20 14M20 20v-6h-6"/></svg>Yeni Şifre Üret</button>
             </div>
           </article>
 

@@ -2031,6 +2031,12 @@ code {
   color: var(--primary);
 }
 
+.form-message-warning {
+  border-color: rgba(217, 119, 6, 0.24);
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+
 .api-state {
   display: flex;
   align-items: center;

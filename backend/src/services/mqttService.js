@@ -8,7 +8,9 @@ class MqttService {
   }
 
   connect() {
-    const brokerUrl = process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883';
+    const brokerHost = process.env.MQTT_BROKER_HOST || 'mqtt';
+    const brokerPort = process.env.MQTT_BROKER_PORT || 1883;
+    const brokerUrl = process.env.MQTT_BROKER_URL || `mqtt://${brokerHost}:${brokerPort}`; 
 
     this.client = mqtt.connect(brokerUrl, {
       username: process.env.MQTT_USERNAME,

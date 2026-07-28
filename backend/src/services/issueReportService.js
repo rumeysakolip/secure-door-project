@@ -1,63 +1,63 @@
 // backend/src/services/issueReportService.js
-
-// Geçici hafıza (Prisma DB bağlanana kadar bildirilen arızaları tutar)
-let issueReportsQueue = [];
+const prisma = require('../config/prisma');
 
 /**
  * 1. QR kod ile gelen yeni bir arıza bildirimini kaydeder.
- * @param {Object} reportData - Arıza detayları
- * @param {string} reportData.reportedBy - Bildiren kişinin adı/e-postası (isteğe bağlı)
- * @param {string} reportData.issueType - Arıza türü (örn: "KEYPAD_BROKEN", "CARD_NOT_READING", "DOOR_STUCK")
- * @param {string} reportData.description - Arıza açıklaması
  */
-function createIssueReport({ reportedBy = "Anonim", issueType, description }) {
-  const newReport = {
-    id: issueReportsQueue.length + 1,
-    reportedBy,
-    issueType,
-    description,
-    createdAt: new Date(),
-    status: "OPEN" // OPEN, IN_PROGRESS, RESOLVED
-  };
+async function createIssueReport({ reportedBy = "Anonim", issueType, description }) {
+  try {
+    const newReport = await prisma.arizaBildirimi.create({
+      data: {
+        bildiren: reportedBy,
+        arizaTuru: issueType,
+        aciklama: description,
+        durum: "OPEN"
+      }
+    });
 
-  issueReportsQueue.push(newReport);
-  console.log(`[ARIZA BİLDİRİMİ] Yeni arıza kaydı oluşturuldu: ID ${newReport.id} - ${issueType}`);
+    console.log(`[ARIZA BİLDİRİMİ] Yeni arıza kaydı oluşturuldu: ID ${newReport.arizaId} - ${issueType}`);
 
-  return {
-    success: true,
-    message: "Arıza bildiriminiz başarıyla yöneticilere iletildi. Teşekkür ederiz.",
-    report: newReport
-  };
+    return {
+      success: true,
+      message: "Arıza bildiriminiz başarıyla yöneticilere iletildi. Teşekkür ederiz.",
+      report: newReport
+    };
+  } catch (error) {
+    console.error('Arıza kaydı oluşturulurken hata:', error);
+    return { success: false, message: 'Arıza kaydı oluşturulamadı.' };
+  }
 }
 
 /**
  * 2. Yöneticinin panelde tüm arıza bildirimlerini görmesini sağlar.
  */
-function getAllIssueReports() {
-  return issueReportsQueue;
+async function getAllIssueReports() {
+  return await prisma.arizaBildirimi.findMany({
+    orderBy: { olusturulma: 'desc' }
+  });
 }
 
 /**
- * 3. Yöneticinin arıza durumunu güncellemesini sağlar (Örn: Çözüldü olarak işaretleme).
+ * 3. Yöneticinin arıza durumunu güncellemesini sağlar.
  */
-function updateReportStatus(reportId, status) {
-  const report = issueReportsQueue.find(r => r.id === Number(reportId));
+async function updateReportStatus(reportId, status) {
+  try {
+    const report = await prisma.arizaBildirimi.update({
+      where: { arizaId: Number(reportId) },
+      data: { durum: status }
+    });
 
-  if (!report) {
+    console.log(`[ARIZA GÜNCELLENDİ] ID: ${reportId} durumu yeni hali: ${status}`);
+
     return {
-      success: false,
-      message: "Belirtilen arıza kaydı bulunamadı."
+      success: true,
+      message: `Arıza durumu '${status}' olarak güncellendi.`,
+      report
     };
+  } catch (error) {
+    console.error('Arıza durumu güncellenirken hata:', error);
+    return { success: false, message: 'Arıza kaydı güncellenemedi.' };
   }
-
-  report.status = status;
-  console.log(`[ARIZA GÜNCELLENDİ] ID: ${reportId} durumu yeni hali: ${status}`);
-
-  return {
-    success: true,
-    message: `Arıza durumu '${status}' olarak güncellendi.`,
-    report
-  };
 }
 
 module.exports = {

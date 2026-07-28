@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ana Sayfa | Kontrol Paneli</title>
   <link rel="stylesheet" href="style.css">
-  <script src="script.js?v=20260727-2" defer></script>
+  <script src="script.js?v=20260728-1" defer></script>
 </head>
-<body>
+<body data-page="admin" data-auth-required="true">
   <div class="app-shell">
     <nav class="navbar" id="main-navigation" aria-label="Ana navigasyon">
       <div class="brand">
@@ -39,6 +39,7 @@
           <div><div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18M3 12h18"/></svg>Yönetici görünümü</div><h1 class="page-title">Operasyon Merkezi</h1><p class="page-subtitle page-description">Kapı altyapısının sağlık durumunu ve son erişim hareketlerini yönetin.</p></div>
           <div class="header-actions page-actions"><a class="btn-secondary" href="yetkilendirme.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Yetkilendirme</a></div>
         </section>
+        <p id="admin-api-status" class="form-message" data-page-status role="status" aria-live="polite" hidden></p>
 
         <section class="metrics-grid">
           <article class="metric-card"><div class="metric-top"><span class="metric-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 12h.01M15 12h.01M9 17h6"/></svg></span><span class="badge badge-success">Kapılar</span></div><div class="metric-label">Tanımlı Kapı</div><div class="metric-value" id="admin-door-count">—</div><div class="metric-detail" id="admin-door-detail">Veriler yükleniyor</div></article>

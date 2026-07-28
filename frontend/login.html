@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Giriş Yap | SecureLab</title>
   <link rel="stylesheet" href="style.css">
-  <script src="script.js?v=20260728-1" defer></script>
+  <script src="script.js?v=20260728-2" defer></script>
 </head>
 <body data-page="login">
   <main class="login-page">
@@ -39,10 +39,10 @@
 
         <form id="login-form">
           <div class="form-group">
-            <label for="login-identity">Kullanıcı Adı / E-posta</label>
+            <label for="login-identity">E-posta</label>
             <div class="input-with-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
-              <input id="login-identity" name="identity" type="text" class="form-control" placeholder="Örn: admin" autocomplete="username" required>
+              <input id="login-identity" name="identity" type="email" class="form-control" placeholder="Örn: kullanici@subu.edu.tr" autocomplete="username" required>
             </div>
           </div>
 
@@ -61,8 +61,8 @@
           </div>
 
           <label class="remember-option">
-            <input type="checkbox" name="remember">
-            <span>Beni bu cihazda hatırla</span>
+            <input type="checkbox" id="login-remember" name="remember">
+            <span>Bu cihazda oturumu açık tut</span>
           </label>
 
           <div id="login-message" class="form-message" role="alert" aria-live="polite" hidden></div>
@@ -72,27 +72,12 @@
             Giriş Yap
           </button>
         </form>
-
-        <div class="login-security"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg>Güvenli oturum bağlantısı</div>
+        <div class="login-security">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg>
+          Güvenli oturum bağlantısı
+        </div>
       </div>
     </section>
   </main>
-
-  <dialog class="password-dialog" id="forgot-password-dialog" aria-labelledby="forgot-password-title">
-    <form id="password-reset-form">
-      <div class="dialog-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="M9 12h6M12 9v6"/></svg></div>
-      <h2 id="forgot-password-title">Şifrenizi sıfırlayın</h2>
-      <p>Sisteme kayıtlı e-posta adresinizi yazın. Sıfırlama bağlantısını size gönderelim.</p>
-      <div class="form-group">
-        <label for="reset-email">E-posta adresi</label>
-        <input id="reset-email" type="email" class="form-control" placeholder="ad.soyad@subu.edu.tr" autocomplete="email" required>
-      </div>
-      <div class="dialog-actions">
-        <button type="button" class="btn-secondary" id="close-password-dialog">Vazgeç</button>
-        <button type="submit" class="btn-primary">Bağlantı Gönder</button>
-      </div>
-    </form>
-  </dialog>
-
 </body>
 </html>
