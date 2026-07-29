@@ -6,29 +6,45 @@ const prisma = require('../config/prisma');
  */
 async function handleUnknownCardScan(kartUid) {
   try {
+    const normalizedKartUid = String(kartUid).trim().toUpperCase();
+
     // Kart daha önce kaydedilmiş mi kontrol et
     let kart = await prisma.kart.findUnique({
-      where: { kartUid }
+      where: { kartUid: normalizedKartUid }
     });
 
     if (!kart) {
       // Veritabanına yeni kart olarak ekle
       kart = await prisma.kart.create({
         data: {
-          kartUid,
+          kartUid: normalizedKartUid,
           durum: 'onay_bekliyor',
           iptalNedeni: 'Onay Bekliyor'
         }
       });
-      console.log(`[YENİ KART] Onay bekleyen yeni kart DB'ye eklendi: ${kartUid}`);
+      console.log(`[YENİ KART] Onay bekleyen yeni kart DB'ye eklendi: ${normalizedKartUid}`);
+    } else if (
+      kart.durum === 'iptal'
+      && kart.iptalNedeni === 'Yetkilendirme isteği reddedildi'
+    ) {
+      // Daha önce reddedilen kart yeniden okutulursa yeni bir istek olarak göster.
+      kart = await prisma.kart.update({
+        where: { kartUid: normalizedKartUid },
+        data: {
+          durum: 'onay_bekliyor',
+          iptalTarihi: null,
+          iptalNedeni: 'Onay Bekliyor'
+        }
+      });
+      console.log(`[YENİDEN OKUTMA] Kart yeniden onay bekliyor: ${normalizedKartUid}`);
     } else {
-      console.log(`[KART UYARI] Tanımsız kart tekrar okutuldu: ${kartUid}`);
+      console.log(`[KART UYARI] Tanımsız kart tekrar okutuldu: ${normalizedKartUid}`);
     }
 
     return {
       success: false,
       message: "Kartınız sisteme kayıtlı değil. Onay isteği yöneticiye iletildi.",
-      kartUid
+      kartUid: normalizedKartUid
     };
   } catch (error) {
     console.error(`[KART OKUMA HATA]`, error.message);
@@ -47,10 +63,27 @@ async function getPendingCards() {
       where: {
         durum: 'onay_bekliyor'
       },
-      orderBy: { verilicTarihi: 'desc' }
+      include: {
+        erisimKayitlari: {
+          orderBy: [
+            { kayitTamani: 'desc' },
+            { kayitId: 'desc' }
+          ],
+          take: 1,
+          select: { kayitTamani: true }
+        }
+      }
     });
 
-    return pendingCards;
+    return pendingCards
+      .map(({ erisimKayitlari, ...card }) => ({
+        ...card,
+        sonOkutmaZamani: erisimKayitlari[0]?.kayitTamani || null
+      }))
+      .sort((a, b) => (
+        new Date(b.sonOkutmaZamani || b.verilicTarihi).getTime()
+        - new Date(a.sonOkutmaZamani || a.verilicTarihi).getTime()
+      ));
   } catch (error) {
     console.error(`[ONAY BEKLEYEN KARTLAR HATA]`, error.message);
     return [];
@@ -136,8 +169,54 @@ async function approveCard(kartUid, userId, adminId = null) {
   }
 }
 
+async function rejectCard(kartUid) {
+  try {
+    const normalizedKartUid = String(kartUid).trim().toUpperCase();
+    const kart = await prisma.kart.findUnique({
+      where: { kartUid: normalizedKartUid }
+    });
+
+    if (!kart) {
+      return {
+        success: false,
+        message: 'Reddedilecek kart kaydı bulunamadı.'
+      };
+    }
+
+    await prisma.$transaction([
+      prisma.kart.update({
+        where: { kartUid: normalizedKartUid },
+        data: {
+          durum: 'iptal',
+          iptalTarihi: new Date(),
+          iptalNedeni: 'Yetkilendirme isteği reddedildi'
+        }
+      }),
+      prisma.kartYetkilendirme.updateMany({
+        where: { kartUid: normalizedKartUid },
+        data: { durum: 'pasif' }
+      })
+    ]);
+
+    console.log(`[KART REDDEDİLDİ] ${normalizedKartUid} yetkilendirme isteği reddedildi.`);
+    return {
+      success: true,
+      message: 'Kart yetkilendirme isteği reddedildi.',
+      kartUid: normalizedKartUid
+    };
+  } catch (error) {
+    console.error(`[KART REDDETME HATA]`, error.message);
+    return {
+      success: false,
+      message: 'Kart isteği reddedilirken bir hata oluştu.',
+      error: error.message
+    };
+  }
+}
+
 module.exports = {
   handleUnknownCardScan,
   getPendingCards,
-  approveCard
+  approveCard,
+  rejectCard
 };

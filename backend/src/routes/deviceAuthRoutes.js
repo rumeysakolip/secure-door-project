@@ -106,7 +106,11 @@ router.post('/verify-card', async (req, res) => {
           : !doorAllowed ? 'kapi_yetkisi_yok'
             : 'yetkilendirilmemis';
 
-    if (!kart) await cardApprovalService.handleUnknownCardScan(kartUid);
+    const isRejectedRequest = kart?.durum === 'iptal'
+      && kart?.iptalNedeni === 'Yetkilendirme isteği reddedildi';
+    if (!kart || isRejectedRequest) {
+      await cardApprovalService.handleUnknownCardScan(kartUid);
+    }
 
     return res.status(allowed ? 200 : 403).json({
       success: allowed,
