@@ -1,5 +1,4 @@
 const argon2 = require('argon2');
-const crypto = require('crypto');
 const prisma = require('../src/config/prisma');
 
 async function ensureUser({ ad, soyad, eposta, rol, birimId, password }) {
@@ -46,22 +45,13 @@ async function main() {
     create: { kod: 'CENG', ad: 'Bilgisayar Mühendisliği', aktif: true }
   });
 
-  const admin = await ensureUser({
-    ad: 'Sistem',
-    soyad: 'Yöneticisi',
-    eposta: 'admin@subu.edu.tr',
-    rol: 'admin',
-    birimId: birim.birimId,
-    password: process.env.SEED_ADMIN_PASSWORD || '123456'
-  });
-
-  const hoca = await ensureUser({
+  await ensureUser({
     ad: 'Ahmet',
     soyad: 'Yılmaz',
     eposta: 'ahmet@subu.edu.tr',
-    rol: 'hoca',
+    rol: 'admin',
     birimId: birim.birimId,
-    password: process.env.SEED_TEACHER_PASSWORD || '123456'
+    password: process.env.SEED_ADMIN_PASSWORD || '123456'
   });
 
   const kapi = await prisma.kapi.findFirst({ where: { ad: 'Laboratuvar Kapısı' } })
@@ -103,49 +93,8 @@ async function main() {
     });
   }
 
-  const kart = await prisma.kart.upsert({
-    where: { kartUid: 'A0:B0:C0:D0' },
-    update: {},
-    create: { kartUid: 'A0:B0:C0:D0', durum: 'aktif' }
-  });
-
-  const kartYetkisi = await prisma.kartYetkilendirme.findUnique({
-    where: { kartUid: kart.kartUid }
-  });
-  if (!kartYetkisi) {
-    await prisma.kartYetkilendirme.create({
-      data: {
-        kartUid: kart.kartUid,
-        kullaniciId: hoca.kullaniciId,
-        birimId: birim.birimId,
-        yetkilendiren: admin.kullaniciId,
-        durum: 'aktif',
-        notlar: 'Başlangıç verisi'
-      }
-    });
-  }
-
-  const accessCount = await prisma.erisimKaydi.count();
-  if (!accessCount) {
-    await prisma.erisimKaydi.create({
-      data: {
-        kayitId: 1n,
-        cihazOlayId: crypto.randomUUID(),
-        cihazId: cihaz.cihazId,
-        kapiId: kapi.kapiId,
-        kullaniciId: hoca.kullaniciId,
-        kartId: kart.kartId,
-        okunanUid: kart.kartUid,
-        dogrulamaYontemi: 'kart',
-        sonuc: 'izin',
-        olayTamani: new Date()
-      }
-    });
-  }
-
-  console.log('Başlangıç verileri hazır.');
-  console.log('Yönetici: admin@subu.edu.tr');
-  console.log('Öğretim görevlisi: ahmet@subu.edu.tr');
+  console.log('Canlı başlangıç verileri hazır.');
+  console.log('Yönetici: ahmet@subu.edu.tr');
 }
 
 main()

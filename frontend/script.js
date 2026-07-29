@@ -1,7 +1,5 @@
 const API_CONFIG = Object.freeze({
-    baseUrl: '',
-    // Geliştirme fallback'i gerekirse true yapılabilir; üretimde sahte veri gösterilmez.
-    useMockData: false
+    baseUrl: ''
 });
 
 const AUTH_TOKEN_KEY = 'securelab_auth_token';
@@ -1127,7 +1125,6 @@ function normalizeNavigation() {
         { label: 'Giriş Geçmişi', href: 'gecmis-girisler.html', pages: ['access-history'], path: 'M3 12a9 9 0 1 0 3-6.7L3 8V3m9 4v5l3 2' },
         { label: 'Yetkilendirme', href: 'yetkilendirme.html', pages: ['authorization'], path: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 0 2 2 4-4' },
         { label: 'Arıza Geçmişi', href: 'ariza-gecmisi.html', pages: ['issue-history'], path: 'M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2ZM5 8l-3 3 10 10 3-3' },
-        { label: 'Admin', href: 'admin.html', pages: ['admin'], path: 'M3 21h18M6 21V7l6-4 6 4v14M9 11h.01M15 11h.01', admin: true },
         { label: 'Çıkış Yap', href: 'login.html', pages: [], path: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9', logout: true }
     ];
     links.replaceChildren(...items.map((item) => createSidebarLink(item, currentPage)));
@@ -1259,7 +1256,7 @@ async function requireAuthentication() {
 
 function getRoleDestination(role) {
     const destinations = {
-        admin: 'admin.html',
+        admin: 'index.html',
         hoca: 'index.html',
         sistem: 'index.html'
     };
@@ -1554,16 +1551,26 @@ function renderYetkilendirmeler(data) {
     const activeCount = appState.yetkilendirmeler.filter((item) => item.durum === 'aktif').length;
     const passiveCount = appState.yetkilendirmeler.length - activeCount;
     const pendingCount = appState.bekleyenKartlar.length;
+    const usersWithCard = new Set(
+        appState.yetkilendirmeler
+            .map((permission) => permission.kullaniciId ?? permission.kullanici?.kullaniciId)
+            .filter((userId) => userId != null)
+            .map(String)
+    );
+    const usersWithoutCard = appState.kullanicilar.filter((user) => {
+        return user.rol === 'hoca' && !usersWithCard.has(String(user.kullaniciId));
+    });
+    const visibleRowCount = appState.yetkilendirmeler.length + pendingCount + usersWithoutCard.length;
     setText('auth-active-count', String(activeCount));
     setText('auth-passive-count', String(passiveCount));
-    setText('auth-table-count', `${appState.yetkilendirmeler.length + pendingCount} kayıt`);
+    setText('auth-table-count', `${visibleRowCount} kayıt`);
     setText('auth-pending-count', `${pendingCount} bekleyen istek`);
     setText('authorization-active-count', String(activeCount));
     setText('authorization-passive-count', String(passiveCount));
     setText('authorization-system-state', pendingCount ? `${pendingCount} istek bekliyor` : 'Yetkiler güncel');
 
-    if (!appState.yetkilendirmeler.length && !pendingCount) {
-        showEmpty(tableBody, 'Kart yetkisi veya bekleyen istek bulunamadı.');
+    if (!visibleRowCount) {
+        showEmpty(tableBody, 'Tanımlı hoca, kart yetkisi veya bekleyen istek bulunamadı.');
         return;
     }
 
@@ -1655,6 +1662,47 @@ function renderYetkilendirmeler(data) {
         row.append(nameCell, roleCell, cardCell, pinCell, statusCell, actionCell);
         fragment.appendChild(row);
     });
+
+    usersWithoutCard.forEach((user) => {
+        const row = document.createElement('tr');
+        const userName = `${user.ad || ''} ${user.soyad || ''}`.trim() || 'Bilinmeyen';
+        row.className = 'authorization-unassigned-row';
+        row.dataset.role = humanizeEnum(user.rol);
+        row.dataset.cardStatus = 'Kart atanmadı';
+        row.dataset.status = humanizeEnum(user.durum);
+        row.dataset.searchText = `${userName} ${user.eposta || ''} ${row.dataset.role} kart atanmadı`;
+
+        const nameCell = document.createElement('td');
+        nameCell.append(
+            createElement('strong', 'cell-primary', userName),
+            createElement('span', 'cell-secondary', user.eposta || 'E-posta tanımlı değil')
+        );
+
+        const roleCell = document.createElement('td');
+        roleCell.appendChild(createBadge(humanizeEnum(user.rol), 'info'));
+
+        const cardCell = document.createElement('td');
+        cardCell.append(
+            createElement('code', '', '—'),
+            createElement('span', 'cell-secondary', 'Kart atanmadı')
+        );
+
+        const assignmentCell = createElement(
+            'td',
+            'cell-secondary',
+            'Yeni kart okutulduğunda bu kullanıcıya atanabilir'
+        );
+
+        const statusCell = document.createElement('td');
+        statusCell.appendChild(createBadge('Kart bekleniyor', 'neutral'));
+
+        const actionCell = document.createElement('td');
+        actionCell.appendChild(createElement('span', 'cell-secondary', 'Kart okutun'));
+
+        row.append(nameCell, roleCell, cardCell, assignmentCell, statusCell, actionCell);
+        fragment.appendChild(row);
+    });
+
     tableBody.replaceChildren(fragment);
     refreshTableFilter('authorized-users-table');
 }
