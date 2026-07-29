@@ -274,11 +274,30 @@ void AlertSystem::setLed(bool enabled) {
 }
 
 void AlertSystem::setBuzzer(bool enabled) {
-    writeOutput(
-        _buzzerPin,
-        enabled,
-        _buzzerActiveHigh
-    );
+    /*
+     * Takili buzzer pasif tiptir; yalnizca HIGH/LOW vermek ses uretmez.
+     * tone() ile kare dalga olusturulur. Onay sesi daha ince, red sesi
+     * daha kalin duyulur; desen adimlari bip sayisini belirlemeye devam eder.
+     */
+    if (enabled) {
+        unsigned int frequency = 2000;
+
+        if (_activePattern == AlertPattern::Success) {
+            frequency = 2800;
+        } else if (
+            _activePattern == AlertPattern::AccessDenied
+            || _activePattern == AlertPattern::InvalidPin
+            || _activePattern == AlertPattern::Error
+        ) {
+            frequency = 1200;
+        }
+
+        tone(_buzzerPin, frequency);
+        return;
+    }
+
+    noTone(_buzzerPin);
+    writeOutput(_buzzerPin, false, _buzzerActiveHigh);
 }
 
 AlertSystem::PatternDefinition

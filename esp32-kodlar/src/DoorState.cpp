@@ -1,16 +1,12 @@
 #include "DoorState.h"
 
 #ifdef ARDUINO
-#include "LockController.h"
-
-extern LockController lock;
-
 Durum DoorState::mevcutDurum = Durum::BEKLEMEDE;
 unsigned long DoorState::durumDegisimZamani = 0;
 
 const unsigned long DoorState::DURUM_SURELERI[] = {
     0,      // BEKLEMEDE
-    3000,   // OKUNUYOR
+    7000,   // OKUNUYOR (MQTT cevabi icin zaman tanir)
     5000,   // ONAYLANDI (GİRİŞ)
     2000,   // REDDEDILDI
     0       // ALARM
@@ -29,11 +25,6 @@ bool DoorState::durumGecisiYap(Durum yeniDurum) {
         mevcutDurum = yeniDurum;
         durumDegisimZamani = millis();
         Serial.printf("[DoorState] Durum Degisti -> %s\n", durumMetni(mevcutDurum));
-
-        // Kilit Tetikleme Mantığı (Sadece giriş onaylandığında kapı açılır)
-        if (mevcutDurum == Durum::ONAYLANDI) {
-            lock.unlockDoor();
-        }
 
         return true;
     }

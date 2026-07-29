@@ -21,7 +21,6 @@ const ihlalKaydiRotalari = require('./routes/ihlalKayitlari');
 const grupRotalari = require('./routes/gruplar');
 const yetkiKuraliRotalari = require('./routes/yetkiKurallari');
 const authRotalari = require('./routes/authRoutes');
-const cihazDogrulamaRotalari = require('./routes/deviceAuthRoutes');
 
 const arizaRotalari = require('./routes/arizalar');
 
@@ -30,11 +29,6 @@ const PORT = process.env.PORT || 3000;
 const mqttService = require('./services/mqttService');
 const { initSifreCron } = require('./cron/sifreCron');
 const { initIhlalCron } = require('./cron/ihlalCron');
-
-// Cron zamanlayıcılarını başlat
-mqttService.connect();
-initSifreCron();
-initIhlalCron();
 
 // Middleware'ler
 app.use(express.json({ limit: '5mb' }));
@@ -55,7 +49,6 @@ app.get('/api/health', (req, res) => {
 
 // Auth Endpoint'leri (giriş yapma / token alma herkese açık)
 app.use('/api/auth', authRotalari);
-app.use('/api/device', cihazDogrulamaRotalari);
 
 // Endpoint Bağlantıları
 app.use('/api/birimler', birimRotalari);
@@ -95,6 +88,14 @@ app.use((err, req, res, next) => {
 });
 
 // -------------------------------------------------------------
-app.listen(PORT, () => {
-    console.log(`🚀 Backend sunucusu ${PORT} portunda başlatıldı.`);
-});
+if (require.main === module) {
+    mqttService.connect();
+    initSifreCron();
+    initIhlalCron();
+
+    app.listen(PORT, () => {
+        console.log(`🚀 Backend sunucusu ${PORT} portunda başlatıldı.`);
+    });
+}
+
+module.exports = app;

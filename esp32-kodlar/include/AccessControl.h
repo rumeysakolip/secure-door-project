@@ -6,15 +6,13 @@
 #ifdef ARDUINO
 #include <Arduino.h>
 #include <Preferences.h>
-#include "config.h"
 #endif
 
 class AccessControl {
 private:
 #ifdef ARDUINO
     Preferences preferences;
-    static const unsigned long HTTP_TIMEOUT_MS = 2000;
-    String _lastOfflineUserId; // Çevrimdışı girişte şifreden yakalanan kullanıcı ID'si
+    String _lastOfflineUserId;
 #endif
 
 public:
@@ -23,17 +21,18 @@ public:
     void begin();
     void loop();
 
-    // Tek yönlü doğrulama (isCard = true ise kart, false ise şifre)
-    bool verifyAccess(String authData, bool isCard);
+    // Yalnizca MQTT baglantisi yokken yerel PIN listesini kontrol eder.
+    // Kart dogrulamasi her zaman backend tarafinda MQTT ile yapilir.
+    bool verifyOfflineAccess(String authData, bool isCard);
 
-    // Kişiye Özel Çevrimdışı Şifre Yönetimi
-    void syncOfflinePins(String jsonList);
+    void syncOfflinePins(String jsonList, bool replaceList = true);
     String getLastOfflineUserId();
 #endif
 
-    // Donanımdan bağımsız, native test edilebilir saf mantık: JSON listede
-    // PIN arar, bulursa kullanıcı ID'sini döner, bulamazsa boş string döner.
-    static std::string findUserByOfflinePin(const std::string& jsonList, const std::string& pin);
+    static std::string findUserByOfflinePin(
+        const std::string &jsonList,
+        const std::string &pin
+    );
 };
 
 #endif

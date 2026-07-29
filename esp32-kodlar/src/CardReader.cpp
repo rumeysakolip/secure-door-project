@@ -96,7 +96,7 @@ void CardReader::update() {
     }
 
     unsigned long simdi = millis();
-    if (isDuplicateRead(uid, _lastCardId, simdi, _lastReadTimestamp, 1000)) {
+    if (isDuplicateRead(uid, _lastCardId, simdi, _lastReadTimestamp, 6000)) {
         Serial.println(F("[CardReader] Tekrarli okuma (debounce) - atlaniyor."));
         return;
     }

@@ -2,6 +2,56 @@ const mqtt = require('mqtt');
 const crypto = require('crypto');
 const prisma = require('../config/prisma');
 const cardApprovalService = require('./cardApprovalService');
+const accessDecisionService = require('./accessDecisionService');
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function parsePositiveInt(value, fallback = null) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function parseEventTime(payload) {
+  const rawEventTime = payload.olay_zamani || payload.olayZamani;
+  const epochSeconds = Number(rawEventTime);
+
+  if (Number.isFinite(epochSeconds) && epochSeconds >= 1600000000) {
+    return new Date(epochSeconds * 1000);
+  }
+
+  if (rawEventTime) {
+    const parsedTime = new Date(rawEventTime);
+    if (!Number.isNaN(parsedTime.getTime()) && parsedTime.getTime() >= 1600000000000) {
+      return parsedTime;
+    }
+  }
+
+  return new Date();
+}
+
+function safeBigInt(value) {
+  try {
+    return value === null || value === undefined || value === ''
+      ? null
+      : BigInt(value);
+  } catch (error) {
+    return null;
+  }
+}
+
+function sanitizedAccessPayload(payload, decision) {
+  const detail = {
+    ...payload,
+    sunucu_karari: decision.allowed ? 'izin' : 'red',
+    sunucu_red_nedeni: decision.reason || null
+  };
+
+  if (Object.prototype.hasOwnProperty.call(detail, 'pin')) {
+    detail.pin = '******';
+  }
+
+  return detail;
+}
 
 class MqttService {
   constructor() {
@@ -12,13 +62,13 @@ class MqttService {
   connect() {
     const brokerHost = process.env.MQTT_BROKER_HOST || 'mqtt';
     const brokerPort = process.env.MQTT_BROKER_PORT || 1883;
-    const brokerUrl = process.env.MQTT_BROKER_URL || `mqtt://${brokerHost}:${brokerPort}`; 
+    const brokerUrl = process.env.MQTT_BROKER_URL || `mqtt://${brokerHost}:${brokerPort}`;
 
     this.client = mqtt.connect(brokerUrl, {
       username: process.env.MQTT_USERNAME,
       password: process.env.MQTT_PASSWORD,
       clientId: `backend_${Math.random().toString(16).slice(2, 10)}`,
-      reconnectPeriod: 5000,
+      reconnectPeriod: 5000
     });
 
     this.client.on('connect', () => {
@@ -42,13 +92,11 @@ class MqttService {
   }
 
   subscribeToTopics() {
-    const topics = [
+    [
       'kapi/+/durum',
       'kapi/+/saglik',
-      'kapi/+/erisim-istek',
-    ];
-
-    topics.forEach((topic) => {
+      'kapi/+/erisim-istek'
+    ].forEach((topic) => {
       this.client.subscribe(topic, { qos: 1 }, (err) => {
         if (err) console.error(`[MQTT] Abone olunamadı: ${topic}`, err.message);
         else console.log(`[MQTT] Abone olundu: ${topic}`);
@@ -57,16 +105,16 @@ class MqttService {
   }
 
   extractCihazId(topic) {
-    const parcalar = topic.split('/');
-    return parcalar.length >= 2 ? parseInt(parcalar[1], 10) : null;
+    const parts = topic.split('/');
+    return parts.length >= 2 ? Number.parseInt(parts[1], 10) : null;
   }
 
   async handleIncomingMessage(topic, messageBuffer) {
     let payload;
     try {
       payload = JSON.parse(messageBuffer.toString());
-    } catch (err) {
-      console.error(`[MQTT] Geçersiz JSON payload (${topic}):`, messageBuffer.toString());
+    } catch (error) {
+      console.error(`[MQTT] Geçersiz JSON payload (${topic}).`);
       return;
     }
 
@@ -88,17 +136,13 @@ class MqttService {
       await this.handleSaglikMesaji(cihaz, payload);
     } else if (topic.endsWith('/erisim-istek')) {
       await this.handleErisimIstegi(cihaz, payload);
-    } else {
-      console.log(`[MQTT] Tanımsız topic mesajı: ${topic}`, payload);
     }
   }
 
-  // CihazDurumu.kapiDurumu ve cihazDurumTip zorunlu alanlar olduğu için,
-  // gelen payload'da olmayan alanları son bilinen kayıttan tamamlıyoruz.
   async getSonBilinenDurum(cihazId) {
     return prisma.cihazDurumu.findFirst({
       where: { cihazId },
-      orderBy: { guncellenmeTarihi: 'desc' },
+      orderBy: { guncellenmeTarihi: 'desc' }
     });
   }
 
@@ -108,24 +152,29 @@ class MqttService {
         console.log(`[MQTT] Cihaz ${cihaz.cihazId} komut yanıtı: ${payload.durum} - ${payload.mesaj || ''}`);
         return;
       }
+
       const sonDurum = await this.getSonBilinenDurum(cihaz.cihazId);
+      const kapiDurumu = payload.kapiDurumu
+        ?? payload.kapi_durumu
+        ?? sonDurum?.kapiDurumu
+        ?? 'kapali';
 
       await prisma.cihazDurumu.create({
         data: {
           cihazId: cihaz.cihazId,
-          kapiDurumu: payload.kapiDurumu ?? payload.kapi_durumu ?? sonDurum?.kapiDurumu ?? 'arizali',
-          cihazDurumTip: 'cevrimici', // mesaj geldiyse cihaz aktif olarak haberleşiyor demektir
+          kapiDurumu,
+          cihazDurumTip: 'cevrimici',
           bataryaSeviyesi: payload.bataryaSeviyesi ?? sonDurum?.bataryaSeviyesi ?? null,
           wifiSignali: payload.wifiSignali ?? payload.wifi_rssi ?? sonDurum?.wifiSignali ?? null,
           firmwareVersiyon: payload.firmwareVersiyon ?? payload.firmware_versiyon ?? sonDurum?.firmwareVersiyon ?? null,
           bellekKullanimi: payload.bellekKullanimi ?? payload.bellek_kullanimi ?? sonDurum?.bellekKullanimi ?? null,
           kapiAcilmaSayaci: payload.kapiAcilmaSayaci ?? payload.kapi_acilma_sayaci ?? sonDurum?.kapiAcilmaSayaci ?? null,
           kapiAcilmaSuresi: payload.kapiAcilmaSuresi ?? payload.kapi_acilma_suresi ?? null,
-          sonHeartbeat: new Date(),
-        },
+          sonHeartbeat: new Date()
+        }
       });
 
-      console.log(`[MQTT] Cihaz ${cihaz.cihazId} kapı durumu güncellendi: ${payload.kapiDurumu}`);
+      console.log(`[MQTT] Cihaz ${cihaz.cihazId} kapı durumu: ${kapiDurumu.toUpperCase()}`);
     } catch (error) {
       console.error(`[MQTT] Durum mesajı işlenirken hata (cihaz ${cihaz.cihazId}):`, error);
     }
@@ -138,112 +187,221 @@ class MqttService {
       await prisma.cihazDurumu.create({
         data: {
           cihazId: cihaz.cihazId,
-          kapiDurumu: sonDurum?.kapiDurumu ?? 'arizali',
+          kapiDurumu: sonDurum?.kapiDurumu ?? 'kapali',
           cihazDurumTip: 'cevrimici',
           bataryaSeviyesi: payload.bataryaSeviyesi ?? payload.batarya_seviyesi ?? null,
           wifiSignali: payload.wifiSignali ?? payload.wifi_rssi ?? null,
           firmwareVersiyon: payload.firmwareVersiyon ?? payload.firmware_versiyon ?? sonDurum?.firmwareVersiyon ?? null,
           bellekKullanimi: payload.bellekKullanimi ?? payload.bellek_kullanimi ?? null,
           kapiAcilmaSayaci: sonDurum?.kapiAcilmaSayaci ?? null,
-          sonHeartbeat: new Date(),
-        },
+          sonHeartbeat: new Date()
+        }
       });
-
-      console.log(`[MQTT] Cihaz ${cihaz.cihazId} sağlık bilgisi güncellendi.`);
     } catch (error) {
       console.error(`[MQTT] Sağlık mesajı işlenirken hata (cihaz ${cihaz.cihazId}):`, error);
     }
   }
 
-  // kapi/<cihazId>/erisim-istek -> Olay tablosuna logla, sonucu geri bildir
-  async handleErisimIstegi(cihaz, payload) {
-    try {
-      const atama = await prisma.cihazKapiAtama.findFirst({
-        where: { cihazId: cihaz.cihazId, bitis: null },
-      });
+  async logAccessDecision({ cihaz, payload, eventId, decision, card, userId }) {
+    const existing = await prisma.erisimKaydi.findUnique({
+      where: { cihazOlayId: eventId }
+    });
+    if (existing) return existing;
 
-      if (!atama) {
-        console.warn(`[MQTT] Cihaz ${cihaz.cihazId} için aktif kapı ataması bulunamadı.`);
+    const kapiId = decision.door?.kapiId;
+    if (!kapiId) {
+      await prisma.olay.create({
+        data: {
+          tur: 'erisim-basarisiz',
+          kaynak: 'cihaz',
+          cihazId: cihaz.cihazId,
+          kapiId: null,
+          kullaniciId: userId,
+          detay: sanitizedAccessPayload(payload, decision),
+          olayTamani: parseEventTime(payload)
+        }
+      });
+      return null;
+    }
+
+    const eventTime = parseEventTime(payload);
+    const lastRecord = await prisma.erisimKaydi.aggregate({ _max: { kayitId: true } });
+
+    await prisma.$transaction([
+      prisma.olay.create({
+        data: {
+          tur: decision.allowed ? 'erisim-basarili' : 'erisim-basarisiz',
+          kaynak: 'cihaz',
+          cihazId: cihaz.cihazId,
+          kapiId,
+          kullaniciId: userId,
+          detay: sanitizedAccessPayload(payload, decision),
+          olayTamani: eventTime
+        }
+      }),
+      prisma.erisimKaydi.create({
+        data: {
+          kayitId: (lastRecord._max.kayitId || 0n) + 1n,
+          cihazOlayId: eventId,
+          cihazId: cihaz.cihazId,
+          kapiId,
+          kullaniciId: userId,
+          kartId: card?.kartId || null,
+          okunanUid: payload.okunan_uid || payload.okunanUid || null,
+          dogrulamaYontemi: payload.dogrulama_yontemi === 'pin' ? 'pin' : 'kart',
+          sonuc: decision.allowed ? 'izin' : 'red',
+          redNedeni: decision.allowed ? null : (decision.reason || 'yetkisiz'),
+          olayTamani: eventTime
+        }
+      })
+    ]);
+
+    if (decision.allowed && card) {
+      await prisma.kartYetkilendirme.updateMany({
+        where: { kartUid: card.kartUid, durum: 'aktif' },
+        data: { sonKullanilmaTarihi: new Date() }
+      });
+    }
+
+    return null;
+  }
+
+  publishAccessResponse(cihazId, requestId, decision) {
+    return this.publishCommand(cihazId, 'erisim-yanit', {
+      komut_tipi: 'ACCESS_RESPONSE',
+      cihaz_olay_id: requestId,
+      onay: decision.allowed,
+      kullanici_id: decision.userId?.toString() || null,
+      red_nedeni: decision.reason || null
+    });
+  }
+
+  async handleOfflineAccessRecord(cihaz, payload, eventId) {
+    const cardUid = String(payload.okunan_uid || payload.okunanUid || '').trim().toUpperCase();
+    let card = cardUid
+      ? await prisma.kart.findUnique({
+          where: { kartUid: cardUid },
+          include: {
+            kartYetkilendirmeler: {
+              where: { durum: 'aktif' },
+              take: 1
+            }
+          }
+        })
+      : null;
+
+    if (!card && cardUid) {
+      await cardApprovalService.handleUnknownCardScan(cardUid);
+      card = await prisma.kart.findUnique({ where: { kartUid: cardUid } });
+    }
+
+    const door = await accessDecisionService.resolveDoor(
+      cihaz.cihazId,
+      parsePositiveInt(payload.kapi_id || payload.kapiId)
+    );
+    const userId = card?.kartYetkilendirmeler?.[0]?.kullaniciId
+      || safeBigInt(payload.kullanici_id || payload.kullaniciId);
+    const decision = {
+      allowed: payload.sonuc === 'izin' || payload.sonuc === 'basarili',
+      reason: payload.red_nedeni || null,
+      userId,
+      card,
+      door
+    };
+
+    await this.logAccessDecision({
+      cihaz,
+      payload,
+      eventId,
+      decision,
+      card,
+      userId
+    });
+
+    console.log(`[MQTT] Cihaz ${cihaz.cihazId} offline erişim kaydı işlendi.`);
+  }
+
+  async handleErisimIstegi(cihaz, payload) {
+    const suppliedRequestId = String(
+      payload.cihaz_olay_id || payload.cihazOlayId || payload.istek_id || ''
+    );
+    const eventId = UUID_PATTERN.test(suppliedRequestId)
+      ? suppliedRequestId
+      : crypto.randomUUID();
+    const responseRequestId = suppliedRequestId || eventId;
+
+    try {
+      const existing = await prisma.erisimKaydi.findUnique({
+        where: { cihazOlayId: eventId }
+      });
+      const isOfflineRecord = Boolean(payload.sonuc);
+
+      if (existing) {
+        if (!isOfflineRecord) {
+          this.publishAccessResponse(cihaz.cihazId, responseRequestId, {
+            allowed: existing.sonuc === 'izin',
+            reason: existing.redNedeni,
+            userId: existing.kullaniciId
+          });
+        }
         return;
       }
 
-      const allowed = payload.sonuc === 'izin' || payload.sonuc === 'basarili';
-      const cardUid = payload.okunan_uid || payload.okunanUid || null;
-      const card = cardUid
-        ? await prisma.kart.findUnique({
-            where: { kartUid: cardUid },
-            include: {
-              kartYetkilendirmeler: {
-                where: { durum: 'aktif' },
-                take: 1
-              }
-            }
-          })
-        : null;
-
-      if (!card && cardUid) await cardApprovalService.handleUnknownCardScan(cardUid);
-      const payloadUserId = payload.kullanici_id || payload.kullaniciId;
-      const resolvedUserId = card?.kartYetkilendirmeler?.[0]?.kullaniciId
-        || (payloadUserId ? BigInt(payloadUserId) : null);
-
-      const suppliedEventId = payload.cihaz_olay_id || payload.cihazOlayId;
-      const eventId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(suppliedEventId || '')
-        ? suppliedEventId
-        : crypto.randomUUID();
-      const rawEventTime = payload.olay_zamani || payload.olayTamani;
-      const epochSeconds = Number(rawEventTime);
-      let eventTime = Number.isFinite(epochSeconds) && epochSeconds >= 1600000000
-        ? new Date(epochSeconds * 1000)
-        : new Date();
-      if (!Number.isFinite(epochSeconds) && rawEventTime) {
-        const parsedTime = new Date(rawEventTime);
-        if (!Number.isNaN(parsedTime.getTime()) && parsedTime.getTime() >= 1600000000000) {
-          eventTime = parsedTime;
-        }
+      if (isOfflineRecord) {
+        await this.handleOfflineAccessRecord(cihaz, payload, eventId);
+        return;
       }
-      const lastRecord = await prisma.erisimKaydi.aggregate({ _max: { kayitId: true } });
 
-      await prisma.$transaction([
-        prisma.olay.create({
-          data: {
-            tur: allowed ? 'erisim-basarili' : 'erisim-basarisiz',
-            kaynak: 'cihaz',
-            cihazId: cihaz.cihazId,
-            kapiId: atama.kapiId,
-            kullaniciId: resolvedUserId,
-            detay: payload,
-            olayTamani: eventTime
-          }
-        }),
-        prisma.erisimKaydi.create({
-          data: {
-            kayitId: (lastRecord._max.kayitId || 0n) + 1n,
-            cihazOlayId: eventId,
-            cihazId: cihaz.cihazId,
-            kapiId: atama.kapiId,
-            kullaniciId: resolvedUserId,
-            kartId: card?.kartId || null,
-            okunanUid: cardUid,
-            dogrulamaYontemi: payload.dogrulama_yontemi === 'pin' ? 'pin' : 'kart',
-            sonuc: allowed ? 'izin' : 'red',
-            redNedeni: allowed ? null : (payload.red_nedeni || 'yetkisiz'),
-            olayTamani: eventTime
-          }
-        })
-      ]);
+      const method = payload.dogrulama_yontemi === 'pin' ? 'pin' : 'kart';
+      const requestedDoorId = parsePositiveInt(payload.kapi_id || payload.kapiId);
+      let decision;
 
-      this.publishCommand(cihaz.cihazId, 'erisim-yanit', {
-        istekId: payload.istekId,
-        onay: allowed,
+      if (method === 'pin') {
+        decision = await accessDecisionService.verifyPin({
+          cihazId: cihaz.cihazId,
+          kapiId: requestedDoorId,
+          pin: payload.pin
+        });
+      } else {
+        decision = await accessDecisionService.verifyCard({
+          cihazId: cihaz.cihazId,
+          kapiId: requestedDoorId,
+          kartUid: payload.okunan_uid || payload.okunanUid
+        });
+      }
+
+      let card = decision.card;
+      if (!card && method === 'kart') {
+        const normalizedUid = String(payload.okunan_uid || payload.okunanUid || '').trim().toUpperCase();
+        card = normalizedUid
+          ? await prisma.kart.findUnique({ where: { kartUid: normalizedUid } })
+          : null;
+      }
+
+      await this.logAccessDecision({
+        cihaz,
+        payload,
+        eventId,
+        decision,
+        card,
+        userId: decision.userId
       });
+      this.publishAccessResponse(cihaz.cihazId, responseRequestId, decision);
 
-      console.log(`[MQTT] Cihaz ${cihaz.cihazId} erişim isteği loglandı: ${payload.sonuc}`);
+      console.log(
+        `[MQTT] Cihaz ${cihaz.cihazId} erişim kararı: `
+        + `${decision.allowed ? 'ONAYLANDI / KAPI AÇILACAK' : `REDDEDİLDİ / ${decision.reason}`}`
+      );
     } catch (error) {
       console.error(`[MQTT] Erişim isteği işlenirken hata (cihaz ${cihaz.cihazId}):`, error);
+      this.publishAccessResponse(cihaz.cihazId, responseRequestId, {
+        allowed: false,
+        reason: 'sunucu_hatasi',
+        userId: null
+      });
     }
   }
 
-  // Sunucu -> cihaz genel amaçlı publish
   publishCommand(cihazId, komutTuru, payload) {
     if (!this.connected) {
       console.error('[MQTT] Bağlı değil, mesaj gönderilemedi.');
@@ -254,7 +412,8 @@ class MqttService {
       'kapi-ac': 'DOOR_OPEN',
       'sifre-guncelleme': 'PASSWORD_RENEW',
       'kart-engelle': 'BLOCK',
-      'kart-engel-kaldir': 'UNBLOCK'
+      'kart-engel-kaldir': 'UNBLOCK',
+      'erisim-yanit': 'ACCESS_RESPONSE'
     };
     const normalizedPayload = {
       ...payload,
@@ -263,6 +422,7 @@ class MqttService {
       zaman: payload.zaman || Math.floor(Date.now() / 1000)
     };
     const topic = `kapi/${cihazId}/${komutTuru}`;
+
     this.client.publish(topic, JSON.stringify(normalizedPayload), { qos: 1 }, (err) => {
       if (err) console.error(`[MQTT] Publish hatası (${topic}):`, err.message);
     });

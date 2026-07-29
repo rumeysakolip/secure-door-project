@@ -4,7 +4,6 @@ const prisma = require('../config/prisma');
 const cardApprovalService = require('../services/cardApprovalService');
 const {
     authenticateToken,
-    authenticateDevice,
     requireAdmin,
     requireAdminOrHoca
 } = require('../middlewares/authMiddleware');
@@ -31,23 +30,6 @@ router.get('/onay-bekleyenler', authenticateToken, requireAdminOrHoca, async (re
     try {
         const pendingCards = await cardApprovalService.getPendingCards();
         res.json({ success: true, data: pendingCards });
-    } catch (error) {
-        res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// POST /api/kartlar/bilinmeyen-okuma - ESP32'den gelen bilinmeyen kart bildirimini işle
-// NOT: Bu endpoint ESP32 cihazı tarafından çağrılıyor, insan girişi değil.
-// Bu yüzden authenticateToken/requireAdminOrHoca eklenmedi, korumasız bırakıldı.
-router.post('/bilinmeyen-okuma', authenticateDevice, async (req, res) => {
-    try {
-        const { kartUid } = req.body;
-        if (!kartUid) {
-            return res.status(400).json({ success: false, error: 'kartUid parametresi gereklidir.' });
-        }
-
-        const result = await cardApprovalService.handleUnknownCardScan(kartUid);
-        res.json(result);
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }

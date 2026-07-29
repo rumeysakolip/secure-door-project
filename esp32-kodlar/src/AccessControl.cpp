@@ -6,98 +6,112 @@
 #include <ArduinoJson.h>
 
 #ifdef ARDUINO
-#include <WiFi.h>
-#include <HTTPClient.h>
-#include <time.h>
-
 AccessControl::AccessControl() {
     _lastOfflineUserId = "";
 }
 
 void AccessControl::begin() {
     preferences.begin("securedoor", false);
-    Serial.println("[AUTH] Erisim Kontrol Sistemi baslatildi.");
+    Serial.println("[AUTH] Erisim Kontrol Sistemi baslatildi (MQTT).");
 }
 
 void AccessControl::loop() {
-    // Arka plan senkronizasyon döngüsü (gerekirse)
 }
 
-bool AccessControl::verifyAccess(String authData, bool isCard) {
-    // 1. DURUM: Cihaz ONLINE (İnternet var)
-    if (WiFi.status() == WL_CONNECTED) {
-        HTTPClient http;
-        String endpoint = String(SERVER_URL) + (isCard ? "/verify_card" : "/verify_pin");
-        http.begin(endpoint);
-        http.addHeader("Content-Type", "application/json");
-        http.setTimeout(HTTP_TIMEOUT_MS);
+bool AccessControl::verifyOfflineAccess(String authData, bool isCard) {
+    _lastOfflineUserId = "";
 
-        String payload = "{\"" + String(isCard ? "card_uid" : "pin") + "\":\"" + authData + "\"}";
-        int httpResponseCode = http.POST(payload);
+    if (isCard) {
+        Serial.println("[AUTH-OFFLINE] MQTT yok; kart dogrulamasi yapilamaz.");
+        return false;
+    }
 
-        if (httpResponseCode == 200) {
-            String response = http.getString();
-            http.end();
-            if (response.indexOf("true") != -1 || response.indexOf("success") != -1) {
-                Serial.println("[AUTH] Sunucu dogrulamasi BASARILI.");
-                return true;
+    String jsonList = preferences.getString("offline_pins", "[]");
+    std::string bulunanUserId = findUserByOfflinePin(
+        std::string(jsonList.c_str()),
+        std::string(authData.c_str())
+    );
+
+    if (!bulunanUserId.empty()) {
+        _lastOfflineUserId = String(bulunanUserId.c_str());
+        Serial.println("[AUTH-OFFLINE] Sifre dogrulandi. Kullanici ID: " + _lastOfflineUserId);
+        return true;
+    }
+
+    Serial.println("[AUTH-OFFLINE] Yanlis sifre veya kayitli liste yok.");
+    return false;
+}
+
+void AccessControl::syncOfflinePins(String jsonList, bool replaceList) {
+    String listToStore = jsonList;
+
+    if (!replaceList) {
+        JsonDocument incomingDoc;
+        DeserializationError incomingError = deserializeJson(incomingDoc, jsonList);
+        if (incomingError || !incomingDoc.is<JsonArray>()) {
+            Serial.println("[AUTH] Gelen offline sifre listesi gecersiz, kaydedilmedi.");
+            return;
+        }
+
+        String currentJson = preferences.getString("offline_pins", "[]");
+        JsonDocument currentDoc;
+        DeserializationError currentError = deserializeJson(currentDoc, currentJson);
+
+        JsonDocument mergedDoc;
+        JsonArray mergedList = mergedDoc.to<JsonArray>();
+        JsonArray incomingList = incomingDoc.as<JsonArray>();
+
+        if (!currentError && currentDoc.is<JsonArray>()) {
+            for (JsonObject currentUser : currentDoc.as<JsonArray>()) {
+                const String currentUserId = currentUser["u"] | "";
+                bool replaced = false;
+
+                for (JsonObject incomingUser : incomingList) {
+                    const String incomingUserId = incomingUser["u"] | "";
+                    if (currentUserId == incomingUserId) {
+                        replaced = true;
+                        break;
+                    }
+                }
+
+                if (!replaced) {
+                    mergedList.add(currentUser);
+                }
             }
-        } else {
-            http.end();
         }
 
-        Serial.println("[AUTH] Sunucu dogrulamasi REDDEDILDI.");
-        return false;
+        for (JsonObject incomingUser : incomingList) {
+            mergedList.add(incomingUser);
+        }
+
+        listToStore = "";
+        serializeJson(mergedDoc, listToStore);
     }
-    // 2. DURUM: Cihaz OFFLINE (İnternet yok)
-    else {
-        if (isCard) {
-            Serial.println("[AUTH-OFFLINE] Internet yok! Kart dogrulamasi OFFLINE iken yapilamaz.");
-            return false;
-        }
 
-        String jsonList = preferences.getString("offline_pins", "[]");
-        std::string bulunanUserId = findUserByOfflinePin(
-            std::string(jsonList.c_str()),
-            std::string(authData.c_str())
-        );
-
-        if (!bulunanUserId.empty()) {
-            _lastOfflineUserId = String(bulunanUserId.c_str());
-            Serial.println("[AUTH-OFFLINE] Sifre dogrulandi. Kullanici ID: " + _lastOfflineUserId);
-            return true;
-        }
-
-        Serial.println("[AUTH-OFFLINE] Yanlis sifre veya kayitli liste yok.");
-        return false;
-    }
-}
-
-// MQTT/HTTP ile push edilen yeni JSON listesini NVS belleğe yazar
-void AccessControl::syncOfflinePins(String jsonList) {
-    preferences.putString("offline_pins", jsonList);
+    preferences.putString("offline_pins", listToStore);
     Serial.println("[AUTH] Yeni offline kisi/sifre listesi NVS hafizaya kaydedildi.");
 }
 
-// main.cpp'nin offline log atarken kullanıcı ID'sini çekmesini sağlar
 String AccessControl::getLastOfflineUserId() {
     return _lastOfflineUserId;
 }
 #endif
 
-// Donanımdan bağımsız saf fonksiyon: test edilebilir
-std::string AccessControl::findUserByOfflinePin(const std::string& jsonList, const std::string& pin) {
+std::string AccessControl::findUserByOfflinePin(
+    const std::string &jsonList,
+    const std::string &pin
+) {
     JsonDocument doc;
     DeserializationError err = deserializeJson(doc, jsonList);
 
     if (!err && doc.is<JsonArray>()) {
-        JsonArray arr = doc.as<JsonArray>();
-        for (JsonObject user : arr) {
+        for (JsonObject user : doc.as<JsonArray>()) {
             std::string storedPin = user["p"].as<std::string>();
             if (pin == storedPin) {
                 return user["u"].as<std::string>();
             }
         }
     }
+
     return "";
 }

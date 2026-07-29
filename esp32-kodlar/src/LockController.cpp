@@ -1,80 +1,60 @@
 #include "LockController.h"
 
-LockController::LockController(uint8_t relay_pin, uint8_t buzzer_pin) {
-    relayPin = relay_pin;
-    buzzerPin = buzzer_pin;
-    
-    isUnlocked = false;
-    isCoolingDown = false;
-    isDoorPhysicallyOpen = false;
-    buzzerState = false;
-    
-    unlockTimer = 0;
-    cooldownTimer = 0;
-    doorOpenTimer = 0;
-    buzzerToggleTimer = 0;
-}
+LockController::LockController(uint8_t relayPin)
+    : relayPin(relayPin),
+      unlockTimer(0),
+      cooldownTimer(0),
+      isUnlocked(false),
+      isCoolingDown(false) {}
 
 void LockController::begin() {
-    pinMode(relayPin, OUTPUT);
-    pinMode(buzzerPin, OUTPUT);
-    // ACTIVE LOW ROLE: Baslangicta HIGH yaparak kilidi KAPALI tutuyoruz
-    digitalWrite(relayPin, HIGH);  
-    digitalWrite(buzzerPin, LOW); 
+    // Bu role karti HIGH seviyesinde tetikleniyor.
+    // Guvenli bekleme durumunda giris LOW tutulur; boylece kilit
+    // surekli enerji almaz.
+    pinMode(relayPin, OUTPUT_OPEN_DRAIN);
+    digitalWrite(relayPin, LOW);
+
+    Serial.printf(
+        "[KILIT] GPIO%d PASIF/LOW. Okunan lojik=%d.\n",
+        relayPin,
+        digitalRead(relayPin)
+    );
 }
 
 bool LockController::unlockDoor() {
     if (isCoolingDown || isUnlocked) {
-        return false; 
+        return false;
     }
 
-    // ACTIVE LOW ROLE: LOW gondererek role pini tetikliyoruz (kilidi aciyoruz)
-    digitalWrite(relayPin, LOW);
+    digitalWrite(relayPin, HIGH);
     isUnlocked = true;
-    unlockTimer = millis(); 
+    unlockTimer = millis();
+
+    Serial.printf(
+        "[KILIT] GPIO%d AKTIF/HIGH (hat serbest). Okunan lojik=%d; 2000 ms.\n",
+        relayPin,
+        digitalRead(relayPin)
+    );
     return true;
 }
 
-void LockController::update(bool currentDoorSensorState) {
-    unsigned long currentMillis = millis(); 
+void LockController::update() {
+    const unsigned long now = millis();
 
-    // A. KILIT KAPATMA MANTIGI (Geliştirilmiş)
-    if (isUnlocked) {
-        // Şart 1: Süre dolduysa VEYA Şart 2: Kapı fiziksel olarak açıldıysa enerjiyi HEMEN kes
-        if ((currentMillis - unlockTimer >= UNLOCK_DURATION) || currentDoorSensorState == true) {
-            digitalWrite(relayPin, HIGH); // Enerjiyi kes
-            isUnlocked = false;
-            
-            isCoolingDown = true;
-            cooldownTimer = currentMillis;
-        }
+    if (isUnlocked && now - unlockTimer >= UNLOCK_DURATION) {
+        digitalWrite(relayPin, LOW);
+        isUnlocked = false;
+        isCoolingDown = true;
+        cooldownTimer = now;
+
+        Serial.printf(
+            "[KILIT] GPIO%d PASIF/LOW. Tetikleme suresi=%lu ms.\n",
+            relayPin,
+            now - unlockTimer
+        );
     }
 
-    if (isCoolingDown) {
-        if (currentMillis - cooldownTimer >= COOLDOWN_DURATION) {
-            isCoolingDown = false; 
-        }
-    }
-
-    // B. KAPI AÇIK KALMA UYARISI (HATA 5 ÇÖZÜMÜ ENTEGRELİ)
-    if (currentDoorSensorState == true && isDoorPhysicallyOpen == false) {
-        isDoorPhysicallyOpen = true;
-        doorOpenTimer = currentMillis; 
-    } 
-    else if (currentDoorSensorState == false) {
-        isDoorPhysicallyOpen = false;
-        digitalWrite(buzzerPin, LOW);
-        buzzerState = false;
-    }
-
-    if (isDoorPhysicallyOpen) {
-        // Kapı 20 saniyeden uzun süre açık kalırsa kesikli ikaz ver (Zorla açılma hariç)
-        if (currentMillis - doorOpenTimer >= DOOR_WARNING_TIME) {
-            if (currentMillis - buzzerToggleTimer >= BUZZER_INTERVAL) {
-                buzzerToggleTimer = currentMillis;
-                buzzerState = !buzzerState; 
-                digitalWrite(buzzerPin, buzzerState ? HIGH : LOW);
-            }
-        }
+    if (isCoolingDown && now - cooldownTimer >= COOLDOWN_DURATION) {
+        isCoolingDown = false;
     }
 }

@@ -87,11 +87,9 @@ async function generateOfflineListForDevice(cihazId, rawPinsByUserId = new Map()
     const userId = user.kullaniciId.toString();
     const rawPin = rawPinsByUserId.get(userId);
     if (!rawPin) continue;
-    const pinHmac = crypto.createHmac('sha256', deviceSecret).update(rawPin).digest('hex');
-
     list.push({
       u: userId,
-      p: pinHmac,
+      p: rawPin,
       kartUid: user.kartYetkilendirmeler?.[0]?.kartUid || null,
       gunMaskesi: rule.gunMaskesi || 127,
       saatBaslangic: rule.saatBaslangic || '00:00',
@@ -107,7 +105,7 @@ async function generateOfflineListForDevice(cihazId, rawPinsByUserId = new Map()
         create: list.map((entry) => ({
           kullaniciId: BigInt(entry.u),
           kartUid: entry.kartUid,
-          pinHmac: entry.p,
+          pinHmac: crypto.createHmac('sha256', deviceSecret).update(entry.p).digest('hex'),
           gunMaskesi: entry.gunMaskesi,
           saatBaslangic: entry.saatBaslangic,
           saatBitis: entry.saatBitis

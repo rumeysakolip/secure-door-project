@@ -4,8 +4,6 @@
 #define WIFI_IDENTITY "" // Eduroam anonim kimliği; normal Wi-Fi için boş bırakın.
 #define WIFI_USERNAME "" // Eduroam kullanıcı adı; normal Wi-Fi için boş bırakın.
 #define WIFI_PASSWORD "kablosuz-ag-parolasi"
-#define SERVER_URL "http://192.168.1.10:3000/api/device"
-#define ESP32_SECRET_KEY "docker-env-ile-ayni-cihaz-anahtari"
 #define MQTT_BROKER_HOST "192.168.1.10"
 #define MQTT_BROKER_PORT 1883
 #define DEVICE_ID 1

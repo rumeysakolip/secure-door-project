@@ -23,11 +23,13 @@ enum class CommandType {
     PASSWORD_RENEW,  // Günlük şifre listesi yenileme
     BLOCK,           // Kartı geçici engelleme
     UNBLOCK,         // Kart engelini kaldırma
+    ACCESS_RESPONSE,
     UNKNOWN
 };
 
 // Prisma 'ErisimKaydi' (erisim_kaydi) tablosu ile %100 uyumlu olay yapısı
 struct EntryEvent {
+    std::string pin;
     std::string cihazOlayId;      // UUID (Çevrimdışı/Canlı kayıt benzersiz kimliği)
     int cihazId = 1;              // DB Cihaz ID
     int kapiId = 1;               // DB Kapı ID
@@ -41,6 +43,10 @@ struct EntryEvent {
 
 // Sunucudan (MQTT) ESP32'ye gelen komut yapısı
 struct DeviceCommand {
+    std::string requestId;
+    bool accessAllowed = false;
+    std::string accessUserId;
+    std::string accessReason;
     CommandType type = CommandType::UNKNOWN;
     std::string issuedByUserId;
     std::string newPasswordListJson; // PASSWORD_RENEW için gelen JSON dizisi
@@ -58,6 +64,7 @@ public:
 
     bool publishEntryEvent(const EntryEvent &event);
     bool publishHeartbeat(int cihazId = 1);
+    bool publishDoorStatus(bool isOpen);
     bool publishPasswordAck(bool success);
     bool isConnected();
 
@@ -81,6 +88,7 @@ private:
     std::string _eventTopic;
     std::string _commandTopic;
     std::string _heartbeatTopic;
+    std::string _statusTopic;
 
     std::queue<DeviceCommand> _commandQueue;
 
