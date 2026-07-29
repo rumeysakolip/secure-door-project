@@ -10,14 +10,21 @@ bool OfflineQueue::baslat() {
         return false;
     }
     baslatildi = true;
+    File kuyrukDosyasi = LittleFS.open(DOSYA_YOLU, FILE_APPEND);
+    if (!kuyrukDosyasi) {
+        Serial.println("[OfflineQueue] Kuyruk dosyasi olusturulamadi.");
+        baslatildi = false;
+        return false;
+    }
+    kuyrukDosyasi.close();
+
     File mevcutDosya = LittleFS.open(DOSYA_YOLU, FILE_READ);
-    if (mevcutDosya) {
-        const size_t dosyaBoyutu = mevcutDosya.size();
-        mevcutDosya.close();
-        if (dosyaBoyutu % sizeof(CevrimdisiOlay) != 0) {
-            LittleFS.remove(DOSYA_YOLU);
-            Serial.println("[OfflineQueue] Eski kuyruk formati temizlendi.");
-        }
+    const size_t dosyaBoyutu = mevcutDosya.size();
+    mevcutDosya.close();
+    if (dosyaBoyutu % sizeof(CevrimdisiOlay) != 0) {
+        File temizDosya = LittleFS.open(DOSYA_YOLU, FILE_WRITE);
+        temizDosya.close();
+        Serial.println("[OfflineQueue] Eski kuyruk formati temizlendi.");
     }
     Serial.println("[OfflineQueue] LittleFS hazir.");
     return true;
@@ -53,6 +60,7 @@ bool OfflineQueue::olayEkle(const char* veri, const char* yontem, bool basarili,
 
 bool OfflineQueue::okumayiBaslat() {
     if (!baslatildi) return false;
+    if (!LittleFS.exists(DOSYA_YOLU)) return false;
     okumaDosyasi = LittleFS.open(DOSYA_YOLU, FILE_READ);
     return okumaDosyasi;
 }
@@ -81,7 +89,8 @@ bool OfflineQueue::ilkOlayiSil() {
 
     if (toplamBoyut <= kayitBoyutu) {
         dosya.close();
-        LittleFS.remove(DOSYA_YOLU); // Tek kayıt varsa dosyayı komple sil
+        File temizDosya = LittleFS.open(DOSYA_YOLU, FILE_WRITE);
+        temizDosya.close();
         return true;
     }
 
@@ -105,6 +114,7 @@ bool OfflineQueue::ilkOlayiSil() {
 
 int OfflineQueue::bekleyenOlaySayisi() {
     if (!baslatildi) return 0;
+    if (!LittleFS.exists(DOSYA_YOLU)) return 0;
     File dosya = LittleFS.open(DOSYA_YOLU, FILE_READ);
     if (!dosya) return 0;
     size_t boyut = dosya.size();
@@ -114,7 +124,8 @@ int OfflineQueue::bekleyenOlaySayisi() {
 
 void OfflineQueue::kuyruguTemizle() {
     if (baslatildi) {
-        LittleFS.remove(DOSYA_YOLU);
+        File temizDosya = LittleFS.open(DOSYA_YOLU, FILE_WRITE);
+        temizDosya.close();
         Serial.println("[OfflineQueue] Yerel kuyruk temizlendi.");
     }
 }

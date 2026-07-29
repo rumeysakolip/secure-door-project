@@ -41,12 +41,11 @@ async function handleUnknownCardScan(kartUid) {
  */
 async function getPendingCards() {
   try {
-    // KartYetkilendirme tablosunda hiç kaydı olmayan kartları getir
+    // Kartın gerçek durumuna göre bekleyenleri getir. Yarım kalmış eski
+    // yetkilendirme kayıtları kartın listeden kaybolmasına neden olmamalı.
     const pendingCards = await prisma.kart.findMany({
       where: {
-        kartYetkilendirmeler: {
-          none: {}
-        }
+        durum: 'onay_bekliyor'
       },
       orderBy: { verilicTarihi: 'desc' }
     });
@@ -64,43 +63,66 @@ async function getPendingCards() {
  */
 async function approveCard(kartUid, userId, adminId = null) {
   try {
+    const normalizedKartUid = String(kartUid).trim().toUpperCase();
     const kullaniciIdBigInt = BigInt(userId);
+    const adminIdBigInt = adminId ? BigInt(adminId) : null;
 
-    // Kartın DB'de olup olmadığını kontrol et
-    let kart = await prisma.kart.findUnique({
-      where: { kartUid }
+    const kullanici = await prisma.kullanici.findUnique({
+      where: { kullaniciId: kullaniciIdBigInt },
+      select: { kullaniciId: true, birimId: true, durum: true }
     });
 
-    if (!kart) {
-      // Kart DB'de yoksa önce oluşturalım
-      kart = await prisma.kart.create({
-        data: { kartUid, durum: 'aktif' }
-      });
+    if (!kullanici || kullanici.durum !== 'aktif') {
+      return {
+        success: false,
+        message: 'Kart yalnızca aktif bir kullanıcıya atanabilir.'
+      };
     }
 
-    // Kart yetkilendirme kaydını oluştur
-    const yetkilendirme = await prisma.kartYetkilendirme.create({
-      data: {
-        kartUid: kartUid,
-        kullaniciId: kullaniciIdBigInt,
-        durum: 'aktif',
-        yetkilendiren: adminId ? BigInt(adminId) : null,
-        notlar: 'Yönetici Paneli Üzerinden Onaylandı'
-      }
+    // Kart durumu ile kullanıcı yetkisini tek transaction içinde güncelle.
+    // Böylece aynı kart tekrar onaylandığında duplicate hatası oluşmaz ve
+    // "yetki aktif / kart onay bekliyor" şeklinde yarım kayıt kalmaz.
+    const yetkilendirme = await prisma.$transaction(async (tx) => {
+      await tx.kart.upsert({
+        where: { kartUid: normalizedKartUid },
+        update: {
+          durum: 'aktif',
+          iptalTarihi: null,
+          iptalNedeni: null
+        },
+        create: {
+          kartUid: normalizedKartUid,
+          durum: 'aktif'
+        }
+      });
+
+      return tx.kartYetkilendirme.upsert({
+        where: { kartUid: normalizedKartUid },
+        update: {
+          kullaniciId: kullaniciIdBigInt,
+          birimId: kullanici.birimId,
+          durum: 'aktif',
+          yetkilendiren: adminIdBigInt,
+          yetkilendirilmeTarihi: new Date(),
+          notlar: 'Yönetici Paneli Üzerinden Onaylandı'
+        },
+        create: {
+          kartUid: normalizedKartUid,
+          kullaniciId: kullaniciIdBigInt,
+          birimId: kullanici.birimId,
+          durum: 'aktif',
+          yetkilendiren: adminIdBigInt,
+          notlar: 'Yönetici Paneli Üzerinden Onaylandı'
+        }
+      });
     });
 
-    // Kart durumunu aktif ve temiz hale getir
-    await prisma.kart.update({
-      where: { kartUid },
-      data: { durum: 'aktif', iptalNedeni: null }
-    });
-
-    console.log(`[KART ONAYLANDI] ${kartUid} UID'li kart, User ID: ${userId} kişisine tanımlandı.`);
+    console.log(`[KART ONAYLANDI] ${normalizedKartUid} UID'li kart, User ID: ${userId} kişisine tanımlandı.`);
 
     return {
       success: true,
       message: "Kart başarıyla yetkilendirildi ve kullanıcıya atandı.",
-      kartUid,
+      kartUid: normalizedKartUid,
       userId,
       yetkiId: yetkilendirme.kartYetkiId.toString()
     };

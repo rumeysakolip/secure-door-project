@@ -927,20 +927,37 @@ async function initAuthorizationPage() {
         if (roleSelect) roleSelect.value = user?.rol || '';
     });
     fetchCardButton?.addEventListener('click', fetchCardId);
-    loadLatestCardSummary();
+
+    let lastDetectedUid = '';
+    let latestCardRefreshRunning = false;
+    const syncLatestCard = async () => {
+        if (latestCardRefreshRunning) return;
+        latestCardRefreshRunning = true;
+        try {
+            const latest = await loadLatestCardSummary();
+            if (latest?.okunanUid && latest.okunanUid !== lastDetectedUid) {
+                lastDetectedUid = latest.okunanUid;
+                rfidInput.value = latest.okunanUid;
+                rfidInput.dataset.autoFilled = 'true';
+            }
+        } finally {
+            latestCardRefreshRunning = false;
+        }
+    };
+
+    rfidInput?.addEventListener('input', () => {
+        rfidInput.dataset.autoFilled = 'false';
+    });
+    await syncLatestCard();
+    window.setInterval(syncLatestCard, 2000);
 
     form?.addEventListener('submit', async (event) => {
         event.preventDefault();
         const user = appState.kullanicilar.find((item) => String(item.kullaniciId) === userSelect.value);
-        const kartUid = rfidInput.value.trim();
-        const knownCard = appState.kartlar.find((card) => card.kartUid === kartUid);
+        const kartUid = rfidInput.value.trim().toUpperCase();
 
         if (!user || !kartUid) {
             setInlineMessage(message, 'Kullanıcı ve RFID kart UID alanları zorunludur.', 'error');
-            return;
-        }
-        if (!knownCard) {
-            setInlineMessage(message, 'Bu UID kart listesinde bulunamadı. Backend kart okuyucu endpointi sunmuyor; kayıtlı bir kart UID’si seçin.', 'warning');
             return;
         }
 
@@ -949,19 +966,18 @@ async function initAuthorizationPage() {
         setInlineMessage(message, 'Yetki kaydediliyor…', 'info');
 
         try {
-            await apiRequest('/api/kart-yetkilendirmeler', {
+            await apiRequest('/api/kartlar/onayla', {
                 method: 'POST',
                 body: {
                     kartUid,
-                    kullaniciId: String(user.kullaniciId),
-                    birimId: user.birimId ?? null,
-                    yetkilendiren: appState.currentUser?.kullaniciId ?? null
+                    userId: String(user.kullaniciId)
                 }
             });
+            renderKartlar(await getKartlar());
             renderYetkilendirmeler(await getKartYetkilendirmeler());
             form.reset();
             roleSelect.value = '';
-            setInlineMessage(message, 'Kart yetkisi başarıyla kaydedildi.', 'success');
+            setInlineMessage(message, 'Kart aktif edildi ve kullanıcıya başarıyla atandı.', 'success');
         } catch (error) {
             setInlineMessage(message, handleApiError(error), 'error');
         } finally {
@@ -997,13 +1013,16 @@ async function loadLatestCardSummary() {
         const latest = await apiRequest('/api/kartlar/son-okutulan');
         setText('latest-card-uid', latest?.okunanUid || '—');
         setText('latest-card-state', latest?.okunanUid ? 'Hazır' : 'Bekliyor');
-        setText('latest-card-detail', latest?.olayTamani
-            ? `Son okuma: ${formatDateTime(latest.olayTamani)}`
+        const latestTimestamp = latest?.kayitTamani || latest?.olayTamani;
+        setText('latest-card-detail', latestTimestamp
+            ? `Son okuma: ${formatDateTime(latestTimestamp)}`
             : 'Henüz kart okutulmadı');
+        return latest;
     } catch (error) {
         setText('latest-card-uid', '—');
         setText('latest-card-state', 'Bağlantı yok');
         setText('latest-card-detail', handleApiError(error));
+        return null;
     }
 }
 
@@ -1021,8 +1040,9 @@ async function fetchCardId() {
         input.value = latest.okunanUid;
         setText('latest-card-uid', latest.okunanUid);
         setText('latest-card-state', 'Hazır');
-        setText('latest-card-detail', latest?.olayTamani
-            ? `Son okuma: ${formatDateTime(latest.olayTamani)}`
+        const latestTimestamp = latest?.kayitTamani || latest?.olayTamani;
+        setText('latest-card-detail', latestTimestamp
+            ? `Son okuma: ${formatDateTime(latestTimestamp)}`
             : 'Kart okuyucudan alındı');
         setInlineMessage(message, `Son okutulan kart yüklendi: ${latest.okunanUid}`, 'success');
     } catch (error) {

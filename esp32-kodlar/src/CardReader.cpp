@@ -9,9 +9,31 @@ CardReader::CardReader(uint8_t ssPin, uint8_t rstPin, uint8_t sckPin, uint8_t mi
       _sckPin(sckPin), _misoPin(misoPin), _mosiPin(mosiPin) {}
 
 bool CardReader::okuyucuyuBaslat() {
+    // Bazı RC522 klonları soft reset sırasında kilitli kalabiliyor. Her
+    // başlangıç/yeniden bağlanma denemesinde RST hattından gerçek donanım
+    // reseti uygulayarak SPI haberleşmesini temiz bir durumdan başlat.
+    pinMode(_ssPin, OUTPUT);
+    digitalWrite(_ssPin, HIGH);
+    pinMode(_rstPin, OUTPUT);
+    digitalWrite(_rstPin, LOW);
+    delay(10);
+    digitalWrite(_rstPin, HIGH);
+    delay(100);
+
     _mfrc522.PCD_Init();
+    _mfrc522.PCD_AntennaOn();
+    _mfrc522.PCD_SetAntennaGain(MFRC522::RxGain_max);
     byte version = _mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
-    return !(version == 0x00 || version == 0xFF);
+    const bool bagli = !(version == 0x00 || version == 0xFF);
+    if (bagli) {
+        Serial.printf("[CardReader] MFRC522 hazir (VersionReg=0x%02X).\n", version);
+    } else {
+        Serial.printf(
+            "[CardReader] RFID okuyucu bulunamadi (VersionReg=0x%02X). Guc ve SPI kablolarini kontrol edin.\n",
+            version
+        );
+    }
+    return bagli;
 }
 
 void CardReader::begin() {

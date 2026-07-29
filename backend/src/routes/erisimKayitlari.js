@@ -13,9 +13,11 @@ router.get('/', async (req, res) => {
         const erisimKayitlari = await prisma.erisimKaydi.findMany({
             take: limit,
             skip: offset,
-            orderBy: {
-                olayTamani: 'desc' // Kayıtları en yeniden eskiye sıralar
-            },
+            // Cihaz saati sapabilse de sunucuya en son ulaşan kayıt üstte olsun.
+            orderBy: [
+                { kayitTamani: 'desc' },
+                { kayitId: 'desc' }
+            ],
             include: {
                 cihaz: true,
                 kapi: true,

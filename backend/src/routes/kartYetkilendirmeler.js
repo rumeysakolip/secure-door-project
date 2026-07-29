@@ -1,5 +1,6 @@
 const express = require('express');
 const prisma = require('../config/prisma');
+const cardApprovalService = require('../services/cardApprovalService');
 const {
   authenticateToken,
   requireAdmin,
@@ -52,25 +53,29 @@ router.get('/:id', requireAdminOrHoca, async (req, res) => {
 
 router.post('/', requireAdminOrHoca, async (req, res) => {
   try {
-    const { kartUid, kullaniciId, birimId, notlar } = req.body;
+    const { kartUid, kullaniciId } = req.body;
     if (!kartUid || kullaniciId == null) {
       return res.status(400).json({ hata: "'kartUid' ve 'kullaniciId' alanları zorunludur" });
     }
 
-    const permission = await prisma.kartYetkilendirme.create({
-      data: {
-        kartUid: String(kartUid).trim(),
-        kullaniciId: BigInt(kullaniciId),
-        birimId: birimId != null ? Number.parseInt(birimId, 10) : null,
-        yetkilendiren: BigInt(req.user.kullaniciId),
-        notlar: notlar ?? null
-      },
+    // Eski arayüz sürümleri bu endpoint'i çağırıyor. Aynı atomik onay
+    // servisini kullanarak kartın "onay_bekliyor" durumunda kalmasını önle.
+    const result = await cardApprovalService.approveCard(
+      kartUid,
+      kullaniciId,
+      req.user.kullaniciId
+    );
+    if (!result.success) {
+      return res.status(400).json({ hata: result.message, error: result.error });
+    }
+
+    const permission = await prisma.kartYetkilendirme.findUnique({
+      where: { kartUid: result.kartUid },
       include: permissionInclude
     });
     return res.status(201).json(permission);
   } catch (error) {
     console.error('Yetki oluşturulurken hata:', error);
-    if (error.code === 'P2002') return res.status(409).json({ hata: 'Bu kart için zaten bir yetkilendirme kaydı var' });
     if (error.code === 'P2003') return res.status(400).json({ hata: 'Kart, kullanıcı veya birim bilgisi geçersiz' });
     return res.status(500).json({ hata: 'Sunucu hatası' });
   }

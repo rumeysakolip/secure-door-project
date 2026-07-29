@@ -53,8 +53,8 @@ router.post('/bilinmeyen-okuma', authenticateDevice, async (req, res) => {
     }
 });
 
-// POST /api/kartlar/onayla - Yönetici panelinden kartı kullanıcıya ata
-router.post('/onayla', authenticateToken, requireAdmin, async (req, res) => {
+// POST /api/kartlar/onayla - Yetkilendirme panelinden kartı kullanıcıya ata
+router.post('/onayla', authenticateToken, requireAdminOrHoca, async (req, res) => {
     try {
         const { kartUid, userId } = req.body;
 
@@ -82,8 +82,18 @@ router.get('/son-okutulan', authenticateToken, requireAdminOrHoca, async (req, r
     try {
         const latest = await prisma.erisimKaydi.findFirst({
             where: { okunanUid: { not: null } },
-            orderBy: { olayTamani: 'desc' },
-            select: { okunanUid: true, olayTamani: true, sonuc: true }
+            // ESP32 saati yanlış veya geride olsa bile gerçekten en son
+            // sunucuya ulaşan kartı göster.
+            orderBy: [
+                { kayitTamani: 'desc' },
+                { kayitId: 'desc' }
+            ],
+            select: {
+                okunanUid: true,
+                olayTamani: true,
+                kayitTamani: true,
+                sonuc: true
+            }
         });
         if (!latest) return res.status(404).json({ hata: 'Henüz okutulmuş kart bulunamadı.' });
         return res.json(latest);
