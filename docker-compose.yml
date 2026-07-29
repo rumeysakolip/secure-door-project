@@ -30,18 +30,14 @@ services:
       - kapi-network
 
   mqtt:
-    image: eclipse-mosquitto:2.0
+    image: eclipse-mosquitto:latest
     container_name: kapi-sistemi-mqtt
-
     ports:
       - "1883:1883"
       - "9001:9001"
-
     volumes:
-      - ./mosquitto:/mosquitto/config
-
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
     restart: unless-stopped
-
     networks:
       - kapi-network
 
@@ -58,15 +54,7 @@ services:
       DATABASE_URL: ${DATABASE_URL}
       NODE_ENV: development
       PORT: 3000
-      MQTT_BROKER_HOST: mqtt
-      MQTT_BROKER_PORT: 1883
-      JWT_SECRET: ${JWT_SECRET:-securelab-local-jwt-change-this}
-      ESP32_SECRET_KEY: ${ESP32_SECRET_KEY:-securelab-device-development-key}
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
-      ALLOW_DEV_PASSWORD_RESET: ${ALLOW_DEV_PASSWORD_RESET:-true}
-      APP_TIMEZONE: ${APP_TIMEZONE:-Europe/Istanbul}
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-123456}
-      SEED_TEACHER_PASSWORD: ${SEED_TEACHER_PASSWORD:-123456}
+      MQTT_BROKER_URL: mqtt://mqtt:1883
 
     depends_on:
       db:
@@ -76,15 +64,16 @@ services:
 
     restart: unless-stopped
 
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
     volumes:
       - ./backend/src:/app/src
       - ./backend/prisma:/app/prisma
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
     networks:
       - kapi-network
@@ -103,6 +92,13 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
     networks:
       - kapi-network
