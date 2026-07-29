@@ -1,5 +1,7 @@
 #include "DoorState.h"
-#include "LockController.h" 
+
+#ifdef ARDUINO
+#include "LockController.h"
 
 extern LockController lock;
 
@@ -21,21 +23,7 @@ void DoorState::baslat() {
 }
 
 bool DoorState::durumGecisiYap(Durum yeniDurum) {
-    bool izinVerildi = false;
-
-    switch (mevcutDurum) {
-        case Durum::BEKLEMEDE:
-            izinVerildi = true;
-            break;
-        case Durum::OKUNUYOR:
-            izinVerildi = (yeniDurum != Durum::OKUNUYOR);
-            break;
-        case Durum::ONAYLANDI:
-        case Durum::REDDEDILDI:
-        case Durum::ALARM:
-            izinVerildi = (yeniDurum == Durum::BEKLEMEDE);
-            break;
-    }
+    bool izinVerildi = gecisIzinliMi(mevcutDurum, yeniDurum);
 
     if (izinVerildi) {
         mevcutDurum = yeniDurum;
@@ -44,7 +32,7 @@ bool DoorState::durumGecisiYap(Durum yeniDurum) {
 
         // Kilit Tetikleme Mantığı (Sadece giriş onaylandığında kapı açılır)
         if (mevcutDurum == Durum::ONAYLANDI) {
-            lock.unlockDoor(); 
+            lock.unlockDoor();
         }
 
         return true;
@@ -54,9 +42,9 @@ bool DoorState::durumGecisiYap(Durum yeniDurum) {
 
 void DoorState::guncelle() {
     unsigned long zamanSiniri = DURUM_SURELERI[static_cast<int>(mevcutDurum)];
-    
+
     if (zamanSiniri > 0 && (millis() - durumDegisimZamani >= zamanSiniri)) {
-        if (mevcutDurum == Durum::OKUNUYOR || mevcutDurum == Durum::REDDEDILDI || 
+        if (mevcutDurum == Durum::OKUNUYOR || mevcutDurum == Durum::REDDEDILDI ||
             mevcutDurum == Durum::ONAYLANDI) {
             durumGecisiYap(Durum::BEKLEMEDE);
         }
@@ -66,6 +54,7 @@ void DoorState::guncelle() {
 Durum DoorState::mevcutDurumuAl() {
     return mevcutDurum;
 }
+#endif
 
 const char* DoorState::durumMetni(Durum durum) {
     switch (durum) {
@@ -76,4 +65,19 @@ const char* DoorState::durumMetni(Durum durum) {
         case Durum::ALARM:         return "ALARM";
         default:                   return "BILINMEYEN";
     }
+}
+
+// Donanımdan bağımsız saf mantık: hangi durumdan hangi duruma geçiş yapılabilir
+bool DoorState::gecisIzinliMi(Durum mevcutDurum, Durum yeniDurum) {
+    switch (mevcutDurum) {
+        case Durum::BEKLEMEDE:
+            return true;
+        case Durum::OKUNUYOR:
+            return (yeniDurum != Durum::OKUNUYOR);
+        case Durum::ONAYLANDI:
+        case Durum::REDDEDILDI:
+        case Durum::ALARM:
+            return (yeniDurum == Durum::BEKLEMEDE);
+    }
+    return false;
 }
