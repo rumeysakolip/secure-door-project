@@ -56,6 +56,7 @@ private:
     unsigned long _lastReadTimestamp = 0;
     bool _newReadFlag = false;
     unsigned long _sonBaglantiDenemesi = 0;
+    unsigned long _sonSaglikKontrolu = 0;
 
     bool okuyucuyuBaslat();
 #endif

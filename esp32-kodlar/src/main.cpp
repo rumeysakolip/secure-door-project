@@ -9,6 +9,7 @@
 #include "CardReader.h"
 #include "DoorState.h"
 #include "KeypadInput.h"
+#include "LcdDisplay.h"
 #include "LockController.h"
 #include "MqttManager.h"
 #include "NetworkManager.h"
@@ -27,7 +28,17 @@ LockController lock(RELAY_PIN);
 NetworkManager network(WIFI_SSID, WIFI_IDENTITY, WIFI_USERNAME, WIFI_PASSWORD);
 AccessControl accessControl;
 // Kullandigimiz buzzer modulu LOW seviyesinde ses verir.
-AlertSystem alertSystem(BUZZER_PIN, LED_GREEN_PIN, false, true);
+AlertSystem alertSystem(
+    BUZZER_PIN,
+    LED_GREEN_PIN,
+    false,
+    false,
+    LED_BLUE_PIN,
+    false,
+    LED_RED_PIN,
+    false
+);
+LcdDisplay lcdDisplay(I2C_SDA_PIN, I2C_SCL_PIN);
 KeypadInput keypadInput(
     rowPins,
     colPins,
@@ -47,14 +58,17 @@ static PendingAccessRequest pendingAccess;
 static constexpr uint32_t ACCESS_RESPONSE_TIMEOUT_MS = 6000;
 static uint32_t lastHeartbeatMs = 0;
 static bool doorSensorInitialized = false;
-static bool doorSensorCalibrated = false;
-static uint8_t doorSensorClosedLevel = HIGH;
-static uint8_t pendingDoorSensorLevel = HIGH;
+// Harici pull-up baglantisinda sensor kapali kontakta GPIO35'i GND'ye
+// ceker: LOW = kapi KAPALI, HIGH = kapi ACIK.
+static constexpr uint8_t DOOR_SENSOR_CLOSED_LEVEL = LOW;
 static bool lastDoorPhysicallyOpen = false;
 static bool pendingDoorSensorState = false;
 static uint32_t doorSensorChangedAtMs = 0;
-static constexpr uint32_t DOOR_SENSOR_CALIBRATION_MS = 1500;
 static constexpr uint32_t DOOR_SENSOR_DEBOUNCE_MS = 500;
+static uint32_t doorOpenedAtMs = 0;
+static bool doorOpenAlarmActive = false;
+static constexpr uint32_t DOOR_OPEN_ALARM_DELAY_MS = 20000;
+static Durum lastLcdWorkflowState = Durum::ALARM;
 
 static std::string createEventId() {
     uint32_t a = esp_random();
@@ -93,7 +107,7 @@ static void applyAccessDecision(bool allowed, const std::string &reason = "") {
         DoorState::durumGecisiYap(Durum::ONAYLANDI);
         alertSystem.playSuccess();
 
-        if (doorSensorCalibrated && lastDoorPhysicallyOpen) {
+        if (doorSensorInitialized && lastDoorPhysicallyOpen) {
             Serial.println("[KILIT] Kapi zaten ACIK; role tetiklenmedi.");
         } else if (!lock.unlockDoor()) {
             Serial.println("[KILIT] Role darbesi devam ettigi icin yeni tetikleme atlandi.");
@@ -168,7 +182,7 @@ static void processPendingCommands() {
 
         if (command.type == CommandType::DOOR_OPEN) {
             const bool opened =
-                (!doorSensorCalibrated || !lastDoorPhysicallyOpen)
+                (!doorSensorInitialized || !lastDoorPhysicallyOpen)
                 && lock.unlockDoor();
             Serial.println(opened
                 ? "[KAPI] Uzaktan acma komutu uygulandi."
@@ -229,47 +243,27 @@ static void replayOneOfflineEvent() {
 static void updatePhysicalDoorState() {
     const uint8_t sensorLevel = digitalRead(SENSOR_PIN);
     const uint32_t now = millis();
+    const bool rawDoorOpen = sensorLevel != DOOR_SENSOR_CLOSED_LEVEL;
 
     if (!doorSensorInitialized) {
         doorSensorInitialized = true;
-        pendingDoorSensorLevel = sensorLevel;
+        lastDoorPhysicallyOpen = rawDoorOpen;
+        pendingDoorSensorState = rawDoorOpen;
         doorSensorChangedAtMs = now;
+        doorOpenedAtMs = rawDoorOpen ? now : 0;
         Serial.printf(
-            "[KAPI] Manyetik sensor kalibre ediliyor (GPIO%d=%d). "
-            "Bu sirada kapi KAPALI tutulmali.\n",
+            "[KAPI] Baslangic fiziksel durumu: %s "
+            "(GPIO%d=%d, LOW=KAPALI / HIGH=ACIK).\n",
+            lastDoorPhysicallyOpen ? "ACIK" : "KAPALI",
             SENSOR_PIN,
             sensorLevel
         );
+        mqttManager.publishDoorStatus(lastDoorPhysicallyOpen);
+        if (DoorState::mevcutDurumuAl() == Durum::BEKLEMEDE) {
+            lcdDisplay.showIdle(lastDoorPhysicallyOpen);
+        }
         return;
     }
-
-    if (!doorSensorCalibrated) {
-        if (sensorLevel != pendingDoorSensorLevel) {
-            pendingDoorSensorLevel = sensorLevel;
-            doorSensorChangedAtMs = now;
-            return;
-        }
-
-        if (now - doorSensorChangedAtMs < DOOR_SENSOR_CALIBRATION_MS) {
-            return;
-        }
-
-        doorSensorClosedLevel = pendingDoorSensorLevel;
-        doorSensorCalibrated = true;
-        lastDoorPhysicallyOpen = false;
-        pendingDoorSensorState = false;
-        doorSensorChangedAtMs = now;
-        Serial.printf(
-            "[KAPI] Sensor kalibrasyonu tamamlandi. "
-            "Fiziksel durum: KAPALI (GPIO%d=%d kapali seviyesi).\n",
-            SENSOR_PIN,
-            doorSensorClosedLevel
-        );
-        mqttManager.publishDoorStatus(false);
-        return;
-    }
-
-    const bool rawDoorOpen = sensorLevel != doorSensorClosedLevel;
 
     if (rawDoorOpen != pendingDoorSensorState) {
         pendingDoorSensorState = rawDoorOpen;
@@ -279,6 +273,7 @@ static void updatePhysicalDoorState() {
         && now - doorSensorChangedAtMs >= DOOR_SENSOR_DEBOUNCE_MS
     ) {
         lastDoorPhysicallyOpen = pendingDoorSensorState;
+        doorOpenedAtMs = lastDoorPhysicallyOpen ? now : 0;
         Serial.printf(
             "[KAPI] Fiziksel durum: %s (GPIO%d=%d)\n",
             lastDoorPhysicallyOpen ? "ACIK" : "KAPALI",
@@ -286,7 +281,66 @@ static void updatePhysicalDoorState() {
             sensorLevel
         );
         mqttManager.publishDoorStatus(lastDoorPhysicallyOpen);
+        if (DoorState::mevcutDurumuAl() == Durum::BEKLEMEDE) {
+            lcdDisplay.showIdle(lastDoorPhysicallyOpen);
+        }
     }
+}
+
+static void updateDoorOpenAlarm() {
+    if (!doorSensorInitialized) return;
+
+    if (
+        lastDoorPhysicallyOpen
+        && !doorOpenAlarmActive
+        && millis() - doorOpenedAtMs >= DOOR_OPEN_ALARM_DELAY_MS
+    ) {
+        doorOpenAlarmActive = true;
+        alertSystem.playDoorOpenTooLong();
+        lcdDisplay.showAlarm();
+        Serial.println(
+            "[ALARM] Kapi 20 saniyeden uzun suredir ACIK: "
+            "buzzer surekli, mavi LED aktif."
+        );
+        return;
+    }
+
+    if (!lastDoorPhysicallyOpen && doorOpenAlarmActive) {
+        doorOpenAlarmActive = false;
+        alertSystem.stop(AlertPattern::DoorOpenTooLong);
+        lcdDisplay.showIdle(false);
+        Serial.println("[ALARM] Kapi KAPANDI: buzzer ve mavi LED kapatildi.");
+    }
+}
+
+static void updateLcdWorkflowState() {
+    if (doorOpenAlarmActive) {
+        lcdDisplay.showAlarm();
+        return;
+    }
+
+    const Durum currentState = DoorState::mevcutDurumuAl();
+    if (currentState == lastLcdWorkflowState) return;
+
+    switch (currentState) {
+        case Durum::BEKLEMEDE:
+            lcdDisplay.showIdle(lastDoorPhysicallyOpen);
+            break;
+        case Durum::OKUNUYOR:
+            lcdDisplay.showChecking();
+            break;
+        case Durum::ONAYLANDI:
+            lcdDisplay.showApproved();
+            break;
+        case Durum::REDDEDILDI:
+            lcdDisplay.showDenied();
+            break;
+        case Durum::ALARM:
+            lcdDisplay.showAlarm();
+            break;
+    }
+
+    lastLcdWorkflowState = currentState;
 }
 
 void setup() {
@@ -294,6 +348,8 @@ void setup() {
     Serial.println("[SYSTEM] SecureDoor baslatiliyor...");
 
     pinMode(SENSOR_PIN, INPUT);
+    lcdDisplay.begin();
+    lcdDisplay.showBoot();
     lock.begin();
     alertSystem.begin();
     cardReader.begin();
@@ -336,12 +392,37 @@ void loop() {
     }
 
     keypadInput.update();
+    if (keypadInput.wasKeyPressed()) {
+        alertSystem.playKeypress();
+
+        const CustomKeypadEvent keypadEvent = keypadInput.getLastEvent();
+        if (keypadEvent.type == KeypadEventType::KeyPressed) {
+            alertSystem.setPinEntryActive(true);
+            lcdDisplay.showPinEntry(keypadEvent.pinLength);
+        } else if (
+            keypadEvent.type == KeypadEventType::PinCleared
+            || keypadEvent.type == KeypadEventType::PinCancelled
+            || keypadEvent.type == KeypadEventType::PinCompleted
+        ) {
+            alertSystem.setPinEntryActive(false);
+            lcdDisplay.showIdle(lastDoorPhysicallyOpen);
+        } else if (keypadEvent.type == KeypadEventType::InvalidLength) {
+            alertSystem.setPinEntryActive(false);
+            lcdDisplay.showPinInvalid();
+        }
+    }
+    if (keypadInput.hasTimedOut()) {
+        alertSystem.setPinEntryActive(false);
+    }
     if (keypadInput.isPinReady()) {
         processCredential(keypadInput.consumePin(), false);
     }
 
     alertSystem.update();
     updatePhysicalDoorState();
+    updateDoorOpenAlarm();
     lock.update();
     DoorState::guncelle();
+    updateLcdWorkflowState();
+    lcdDisplay.update();
 }

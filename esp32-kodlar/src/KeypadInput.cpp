@@ -32,6 +32,7 @@ KeypadInput::KeypadInput(
       _started(false),
       _pinReady(false),
       _timedOut(false),
+      _keyPressedThisUpdate(false),
       _lastEvent{} {
     normalizePinLimits();
     resetPinBuffer();
@@ -48,8 +49,10 @@ void KeypadInput::update() {
         return;
     }
 
+    _keyPressedThisUpdate = false;
     char key = _keypad.getKey();
     if (key != NO_KEY) {
+        _keyPressedThisUpdate = true;
         _lastInputTime = millis();
         _timedOut = false;
         processKey(key);
@@ -60,6 +63,10 @@ void KeypadInput::update() {
 
 bool KeypadInput::isPinReady() const {
     return _pinReady;
+}
+
+bool KeypadInput::wasKeyPressed() const {
+    return _keyPressedThisUpdate;
 }
 
 bool KeypadInput::hasTimedOut() const {
@@ -150,6 +157,7 @@ void KeypadInput::handleDigit(char key) {
     ++_pinLength;
     _pinBuffer[_pinLength] = '\0';
 
+    // PIN sadece '#' tusuna basildiginda tamamlanir.
     setEvent(KeypadEventType::KeyPressed, key);
 }
 

@@ -1,12 +1,22 @@
 #include "AlertSystem.h"
 
+static constexpr uint8_t BUZZER_PWM_CHANNEL = 7;
+static constexpr uint8_t BUZZER_PWM_RESOLUTION = 10;
+static constexpr uint32_t BUZZER_PWM_MAX_DUTY =
+    (1U << BUZZER_PWM_RESOLUTION) - 1U;
+
+const AlertSystem::AlertStep AlertSystem::KEYPRESS_STEPS[] = {
+    {true,  true,  90},
+    {false, false, 1}
+};
+
 /*
  * Başarılı giriş:
  * Bir kısa bip ve kısa LED gösterimi.
  */
 const AlertSystem::AlertStep AlertSystem::SUCCESS_STEPS[] = {
-    {true,  true,  150},
-    {false, true,  250},
+    {true,  true,  250},
+    {false, true,  450},
     {false, false, 1}
 };
 
@@ -15,9 +25,9 @@ const AlertSystem::AlertStep AlertSystem::SUCCESS_STEPS[] = {
  * İki kısa bip.
  */
 const AlertSystem::AlertStep AlertSystem::ERROR_STEPS[] = {
-    {true,  true,  120},
-    {false, false, 100},
-    {true,  true,  120},
+    {true,  true,  180},
+    {false, false, 120},
+    {true,  true,  220},
     {false, false, 1}
 };
 
@@ -26,11 +36,11 @@ const AlertSystem::AlertStep AlertSystem::ERROR_STEPS[] = {
  * Daha belirgin üçlü uyarı.
  */
 const AlertSystem::AlertStep AlertSystem::ACCESS_DENIED_STEPS[] = {
-    {true,  true,  180},
-    {false, false, 100},
-    {true,  true,  180},
-    {false, false, 100},
-    {true,  true,  300},
+    {true,  true,  220},
+    {false, false, 120},
+    {true,  true,  220},
+    {false, false, 120},
+    {true,  true,  400},
     {false, false, 1}
 };
 
@@ -60,8 +70,8 @@ const AlertSystem::AlertStep AlertSystem::LOCKOUT_STEPS[] = {
  * Her iki saniyede bir kısa bip.
  */
 const AlertSystem::AlertStep AlertSystem::DOOR_OPEN_STEPS[] = {
-    {true,  true,  150},
-    {false, false, 1850}
+    {true, true,  400},
+    {true, false, 400}
 };
 
 /*
@@ -100,26 +110,48 @@ AlertSystem::AlertSystem(
     uint8_t buzzerPin,
     uint8_t ledPin,
     bool buzzerActiveHigh,
-    bool ledActiveHigh
+    bool ledActiveHigh,
+    uint8_t blueLedPin,
+    bool blueLedActiveHigh,
+    uint8_t redLedPin,
+    bool redLedActiveHigh
 )
     : _buzzerPin(buzzerPin),
       _ledPin(ledPin),
+      _blueLedPin(blueLedPin),
+      _redLedPin(redLedPin),
       _buzzerActiveHigh(buzzerActiveHigh),
       _ledActiveHigh(ledActiveHigh),
+      _blueLedActiveHigh(blueLedActiveHigh),
+      _redLedActiveHigh(redLedActiveHigh),
       _activePattern(AlertPattern::None),
       _activeSteps(nullptr),
       _activeStepCount(0),
       _currentStep(0),
       _repeat(false),
       _started(false),
+      _pinEntryActive(false),
       _stepStartedAt(0) {}
 
 void AlertSystem::begin() {
     pinMode(_buzzerPin, OUTPUT);
     pinMode(_ledPin, OUTPUT);
+    if (_blueLedPin != 255) {
+        pinMode(_blueLedPin, OUTPUT);
+    }
+    if (_redLedPin != 255) {
+        pinMode(_redLedPin, OUTPUT);
+    }
 
-    setBuzzer(false);
+    ledcSetup(BUZZER_PWM_CHANNEL, 2000, BUZZER_PWM_RESOLUTION);
+    ledcAttachPin(_buzzerPin, BUZZER_PWM_CHANNEL);
+    ledcWrite(
+        BUZZER_PWM_CHANNEL,
+        _buzzerActiveHigh ? 0 : BUZZER_PWM_MAX_DUTY
+    );
     setLed(false);
+    setBlueLed(false);
+    setRedLed(false);
 
     _activePattern = AlertPattern::None;
     _activeSteps = nullptr;
@@ -215,6 +247,10 @@ bool AlertSystem::playSuccess() {
     return play(AlertPattern::Success);
 }
 
+bool AlertSystem::playKeypress() {
+    return play(AlertPattern::Keypress);
+}
+
 bool AlertSystem::playError() {
     return play(AlertPattern::Error);
 }
@@ -245,6 +281,15 @@ bool AlertSystem::playOffline() {
 
 bool AlertSystem::playDeviceError() {
     return play(AlertPattern::DeviceError);
+}
+
+void AlertSystem::setPinEntryActive(bool active) {
+    _pinEntryActive = active;
+    if (!_started || isActive()) return;
+
+    setLed(false);
+    setRedLed(false);
+    setBlueLed(active);
 }
 
 void AlertSystem::stop() {
@@ -280,24 +325,31 @@ void AlertSystem::setBuzzer(bool enabled) {
      * daha kalin duyulur; desen adimlari bip sayisini belirlemeye devam eder.
      */
     if (enabled) {
-        unsigned int frequency = 2000;
+        unsigned int frequency = 2800;
 
-        if (_activePattern == AlertPattern::Success) {
-            frequency = 2800;
+        if (
+            _activePattern == AlertPattern::Success
+            || _activePattern == AlertPattern::Keypress
+        ) {
+            frequency = 3200;
+        } else if (_activePattern == AlertPattern::DoorOpenTooLong) {
+            frequency = 4000;
         } else if (
             _activePattern == AlertPattern::AccessDenied
             || _activePattern == AlertPattern::InvalidPin
             || _activePattern == AlertPattern::Error
         ) {
-            frequency = 1200;
+            frequency = 2400;
         }
 
-        tone(_buzzerPin, frequency);
+        ledcWriteTone(BUZZER_PWM_CHANNEL, frequency);
         return;
     }
 
-    noTone(_buzzerPin);
-    writeOutput(_buzzerPin, false, _buzzerActiveHigh);
+    ledcWrite(
+        BUZZER_PWM_CHANNEL,
+        _buzzerActiveHigh ? 0 : BUZZER_PWM_MAX_DUTY
+    );
 }
 
 AlertSystem::PatternDefinition
@@ -305,6 +357,16 @@ AlertSystem::getPatternDefinition(
     AlertPattern pattern
 ) const {
     switch (pattern) {
+        case AlertPattern::Keypress:
+            return {
+                KEYPRESS_STEPS,
+                static_cast<uint8_t>(
+                    sizeof(KEYPRESS_STEPS) /
+                    sizeof(KEYPRESS_STEPS[0])
+                ),
+                false
+            };
+
         case AlertPattern::Success:
             return {
                 SUCCESS_STEPS,
@@ -425,6 +487,9 @@ uint8_t AlertSystem::getPriority(
         case AlertPattern::Offline:
             return 20;
 
+        case AlertPattern::Keypress:
+            return 10;
+
         case AlertPattern::None:
         default:
             return 0;
@@ -440,6 +505,8 @@ void AlertSystem::startPattern(
      */
     setBuzzer(false);
     setLed(false);
+    setBlueLed(false);
+    setRedLed(false);
 
     _activePattern = pattern;
     _activeSteps = definition.steps;
@@ -464,14 +531,37 @@ void AlertSystem::applyCurrentStep() {
         _activeSteps[_currentStep].buzzerOn
     );
 
-    setLed(
-        _activeSteps[_currentStep].ledOn
-    );
+    if (_activePattern == AlertPattern::DoorOpenTooLong) {
+        setLed(false);
+        setBlueLed(false);
+        setRedLed(_activeSteps[_currentStep].ledOn);
+    } else if (_activePattern == AlertPattern::Keypress) {
+        setLed(false);
+        setRedLed(false);
+        setBlueLed(_activeSteps[_currentStep].ledOn);
+    } else if (
+        _activePattern == AlertPattern::AccessDenied
+        || _activePattern == AlertPattern::InvalidPin
+        || _activePattern == AlertPattern::Error
+        || _activePattern == AlertPattern::Lockout
+        || _activePattern == AlertPattern::ForcedEntry
+        || _activePattern == AlertPattern::DeviceError
+    ) {
+        setLed(false);
+        setBlueLed(false);
+        setRedLed(_activeSteps[_currentStep].ledOn);
+    } else {
+        setBlueLed(false);
+        setRedLed(false);
+        setLed(_activeSteps[_currentStep].ledOn);
+    }
 }
 
 void AlertSystem::finishPattern() {
     setBuzzer(false);
     setLed(false);
+    setBlueLed(false);
+    setRedLed(false);
 
     _activePattern = AlertPattern::None;
     _activeSteps = nullptr;
@@ -479,6 +569,20 @@ void AlertSystem::finishPattern() {
     _currentStep = 0;
     _repeat = false;
     _stepStartedAt = 0;
+
+    if (_pinEntryActive) {
+        setBlueLed(true);
+    }
+}
+
+void AlertSystem::setBlueLed(bool enabled) {
+    if (_blueLedPin == 255) return;
+    writeOutput(_blueLedPin, enabled, _blueLedActiveHigh);
+}
+
+void AlertSystem::setRedLed(bool enabled) {
+    if (_redLedPin == 255) return;
+    writeOutput(_redLedPin, enabled, _redLedActiveHigh);
 }
 
 void AlertSystem::writeOutput(

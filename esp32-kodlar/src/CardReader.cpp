@@ -9,6 +9,10 @@ CardReader::CardReader(uint8_t ssPin, uint8_t rstPin, uint8_t sckPin, uint8_t mi
       _sckPin(sckPin), _misoPin(misoPin), _mosiPin(mosiPin) {}
 
 bool CardReader::okuyucuyuBaslat() {
+    // Her yeniden baglanmada ESP32 SPI birimini de temiz baslat.
+    SPI.end();
+    delay(5);
+    SPI.begin(_sckPin, _misoPin, _mosiPin, _ssPin);
     // Bazı RC522 klonları soft reset sırasında kilitli kalabiliyor. Her
     // başlangıç/yeniden bağlanma denemesinde RST hattından gerçek donanım
     // reseti uygulayarak SPI haberleşmesini temiz bir durumdan başlat.
@@ -16,9 +20,9 @@ bool CardReader::okuyucuyuBaslat() {
     digitalWrite(_ssPin, HIGH);
     pinMode(_rstPin, OUTPUT);
     digitalWrite(_rstPin, LOW);
-    delay(10);
+    delay(50);
     digitalWrite(_rstPin, HIGH);
-    delay(100);
+    delay(250);
 
     _mfrc522.PCD_Init();
     _mfrc522.PCD_AntennaOn();
@@ -43,24 +47,42 @@ void CardReader::begin() {
     // DEGILSE, yazilim ile fiziksel kablolama tamamen farkli pinlerde
     // konusur ve RC522 hicbir zaman yanit vermez. Bu yuzden pinleri burada
     // acikca belirtiyoruz.
-    SPI.begin(_sckPin, _misoPin, _mosiPin, _ssPin);
     _status = okuyucuyuBaslat() ? ReaderStatus::ACTIVE : ReaderStatus::DISCONNECTED;
     _sonBaglantiDenemesi = millis();
+    _sonSaglikKontrolu = millis();
 }
 
 void CardReader::update() {
     _newReadFlag = false;
+    const unsigned long simdi = millis();
 
     // Okuyucu bağlantısı koptuysa 3 saniyede bir donanımı otomatik yeniden başlatmayı dener
-    if (_status == ReaderStatus::DISCONNECTED) {
-        if (millis() - _sonBaglantiDenemesi >= 3000) {
-            _sonBaglantiDenemesi = millis();
+    if (_status != ReaderStatus::ACTIVE) {
+        if (simdi - _sonBaglantiDenemesi >= 3000) {
+            _sonBaglantiDenemesi = simdi;
             if (okuyucuyuBaslat()) {
                 _status = ReaderStatus::ACTIVE;
+                _sonSaglikKontrolu = simdi;
                 Serial.println("[CardReader] RFID Okuyucu baglantisi yeniden kuruldu.");
             }
         }
         return; 
+    }
+
+    // Okuyucu calisirken sonradan koparsa da algila ve yeniden baslat.
+    if (simdi - _sonSaglikKontrolu >= 3000) {
+        _sonSaglikKontrolu = simdi;
+        const byte version = _mfrc522.PCD_ReadRegister(MFRC522::VersionReg);
+        if (version == 0x00 || version == 0xFF) {
+            _status = ReaderStatus::DISCONNECTED;
+            _sonBaglantiDenemesi = simdi;
+            Serial.printf(
+                "[CardReader] RFID baglantisi koptu (VersionReg=0x%02X); "
+                "otomatik yeniden baslatilacak.\n",
+                version
+            );
+            return;
+        }
     }
 
     if (!_mfrc522.PICC_IsNewCardPresent() || !_mfrc522.PICC_ReadCardSerial()) {
@@ -95,7 +117,6 @@ void CardReader::update() {
         return;
     }
 
-    unsigned long simdi = millis();
     if (isDuplicateRead(uid, _lastCardId, simdi, _lastReadTimestamp, 6000)) {
         Serial.println(F("[CardReader] Tekrarli okuma (debounce) - atlaniyor."));
         return;
