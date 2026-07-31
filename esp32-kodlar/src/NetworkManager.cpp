@@ -1,6 +1,27 @@
 #include "NetworkManager.h"
 #include <esp_wpa2.h>
 
+// WiFi olaylarini (ozellikle kopma nedenini) terminale yazdirir. Sadece
+// "Baglanti koptu, tekrar deneniyor" demek yerine ESP-IDF'in verdigi gercek
+// sebep kodunu (yanlis sifre/kimlik, RADIUS reddi, AP bulunamadi vb.)
+// gorebilmek icin eklendi; sorun giderirken bu satirlar cok onemli.
+static void logWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
+    if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+        Serial.printf(
+            "[Wi-Fi] Baglanti KOPTU. Sebep kodu: %d "
+            "(bu kodu ESP-IDF wifi_err_reason_t listesinde arayin; "
+            "orn. 2=AUTH_EXPIRE, 15=4WAY_HANDSHAKE_TIMEOUT, "
+            "202-207 arasi EAP/kimlik dogrulama hatalarini gosterir)\n",
+            info.wifi_sta_disconnected.reason
+        );
+    } else if (event == ARDUINO_EVENT_WIFI_STA_CONNECTED) {
+        Serial.println("[Wi-Fi] Erisim noktasina baglandi (henuz IP alinmadi).");
+    } else if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
+        Serial.print("[Wi-Fi] IP alindi: ");
+        Serial.println(WiFi.localIP());
+    }
+}
+
 // 1. Kurucu: Wi-Fi bilgilerini al ve değişkenleri sıfırla
 NetworkManager::NetworkManager(
     const char* wifi_ssid,
@@ -20,6 +41,7 @@ NetworkManager::NetworkManager(
 void NetworkManager::begin() {
     Serial.begin(115200); // Terminal (Seri Port) ekranı için
     
+    WiFi.onEvent(logWifiEvent);
     WiFi.disconnect(true);
     WiFi.mode(WIFI_STA); // ESP32'yi bir istemci (istasyon) moduna alıyoruz
 
@@ -36,7 +58,11 @@ void NetworkManager::begin() {
             reinterpret_cast<const uint8_t*>(password),
             strlen(password)
         );
-        esp_wifi_sta_wpa2_ent_set_ttls_phase2_method(ESP_EAP_TTLS_PHASE2_PAP);
+        // subu.edu.tr eduroam RADIUS'u Windows'un varsayilan EAP-TTLS
+        // istemcisiyle (MSCHAPv2) calisiyor; ESP32 tarafinda da ayni ic
+        // (phase2) yontemi kullanmak gerekiyor. PAP kabul edilmiyorsa
+        // baglanti sessizce (auth reddi ile) basarisiz olur.
+        esp_wifi_sta_wpa2_ent_set_ttls_phase2_method(ESP_EAP_TTLS_PHASE2_MSCHAPV2);
         esp_wifi_sta_wpa2_ent_enable();
         WiFi.begin(ssid);
     } else {

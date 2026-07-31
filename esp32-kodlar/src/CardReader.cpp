@@ -3,6 +3,14 @@
 #ifdef ARDUINO
 #include <SPI.h>
 
+time_t (*CardReader::_saatAlici)() = nullptr;
+bool (*CardReader::_rtcdenMiGeliyor)() = nullptr;
+
+void CardReader::setZamanKaynagi(time_t (*saatAlici)(), bool (*rtcdenMiGeliyor)()) {
+    _saatAlici = saatAlici;
+    _rtcdenMiGeliyor = rtcdenMiGeliyor;
+}
+
 CardReader::CardReader(uint8_t ssPin, uint8_t rstPin, uint8_t sckPin, uint8_t misoPin, uint8_t mosiPin)
     : _mfrc522(ssPin, rstPin),
       _ssPin(ssPin), _rstPin(rstPin),
@@ -106,6 +114,22 @@ void CardReader::update() {
     Serial.println(_mfrc522.PICC_GetTypeName(piccType));
     Serial.print(F("  Zaman (ms)   : "));
     Serial.println(millis());
+    if (_saatAlici != nullptr) {
+        const time_t simdiEpoch = _saatAlici();
+        struct tm zamanBilgisi;
+        // time(nullptr) (dolayisiyla _saatAlici) ham UTC epoch dondurur;
+        // Turkiye (+3 saat) farkini configTime()'in ayarladigi TZ ortam
+        // degiskeni uzerinden yalnizca localtime_r/getLocalTime uygular.
+        // gmtime_r kullanmak +3 saati atlayip dogrudan UTC'yi gosterirdi -
+        // "3 saat geri" sikayetinin sebebi tam olarak buydu.
+        localtime_r(&simdiEpoch, &zamanBilgisi);
+        char tarihSaat[24];
+        strftime(tarihSaat, sizeof(tarihSaat), "%Y-%m-%d %H:%M:%S", &zamanBilgisi);
+        const bool rtcden = (_rtcdenMiGeliyor != nullptr) && _rtcdenMiGeliyor();
+        Serial.print(F("  Saat         : "));
+        Serial.print(tarihSaat);
+        Serial.println(rtcden ? F(" (RTC)") : F(" (NTP)"));
+    }
     Serial.println(F("========================================"));
 
     _mfrc522.PICC_HaltA();

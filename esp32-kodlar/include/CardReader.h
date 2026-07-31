@@ -6,6 +6,7 @@
 #ifdef ARDUINO
 #include <Arduino.h>
 #include <MFRC522.h>
+#include <ctime>
 #endif
 
 enum class ReaderStatus { ACTIVE, READ_ERROR, DISCONNECTED };
@@ -35,6 +36,13 @@ public:
 #ifdef DEBUG_FAKE_CARD
     void injectFakeRead(const std::string &fakeUid, unsigned long timestampMs);
 #endif
+
+    // main.cpp, NTP/RTC'den gelen gecerli zamani buraya baglar; boylece
+    // CardReader kart okundugunda terminale okunabilir tarih/saat de
+    // yazdirabilir. saatAlici: epoch dondurur. rtcdenMiGeliyor: o an
+    // kullanilan kaynak RTC ise true (aksi halde NTP/sistem saati kabul
+    // edilir). Cagrilmazsa (varsayilan nullptr) saat satiri yazdirilmaz.
+    static void setZamanKaynagi(time_t (*saatAlici)(), bool (*rtcdenMiGeliyor)());
 #endif
 
     static std::string uidToString(const uint8_t *uidBytes, uint8_t uidSize);
@@ -59,5 +67,8 @@ private:
     unsigned long _sonSaglikKontrolu = 0;
 
     bool okuyucuyuBaslat();
+
+    static time_t (*_saatAlici)();
+    static bool (*_rtcdenMiGeliyor)();
 #endif
 };

@@ -14,6 +14,7 @@
 #include "MqttManager.h"
 #include "NetworkManager.h"
 #include "OfflineQueue.h"
+#include "RtcManager.h"
 
 static byte rowPins[KeypadInput::ROW_COUNT] = {
     KEYPAD_ROW_1, KEYPAD_ROW_2, KEYPAD_ROW_3, KEYPAD_ROW_4
@@ -39,6 +40,7 @@ AlertSystem alertSystem(
     false
 );
 LcdDisplay lcdDisplay(I2C_SDA_PIN, I2C_SCL_PIN);
+RtcManager rtcManager(I2C_SDA_PIN, I2C_SCL_PIN);
 KeypadInput keypadInput(
     rowPins,
     colPins,
@@ -69,6 +71,34 @@ static uint32_t doorOpenedAtMs = 0;
 static bool doorOpenAlarmActive = false;
 static constexpr uint32_t DOOR_OPEN_ALARM_DELAY_MS = 20000;
 static Durum lastLcdWorkflowState = Durum::ALARM;
+static bool rtcSyncedFromNtp = false;
+
+// NTP zaman senkronize olduysa sistem saatini (mevcut davranis), degilse
+// -mumkunse- pilli RTC'den okunan zamani kullanir. RTC de yoksa yine
+// sistem saatine (time(nullptr)) duser; boylece davranis eskisiyle ayni
+// kalir, sadece RTC varsa WiFi/NTP kesintilerinde dogruluk kaybolmaz.
+static time_t currentEpoch() {
+    if (network.isTimeSet()) return time(nullptr);
+    if (rtcManager.isAvailable() && !rtcManager.lostPower()) {
+        return rtcManager.getEpoch();
+    }
+    return time(nullptr);
+}
+
+// CardReader'in terminale "Saat" satirinda hangi kaynagi kullandigini
+// yazdirabilmesi icin: su an RTC'den mi okunuyor?
+static bool isTimeFromRtc() {
+    return !network.isTimeSet() && rtcManager.isAvailable() && !rtcManager.lostPower();
+}
+
+// NTP ilk kez basariyla senkron olduginda RTC'yi bir defaya mahsus günceller,
+// böylece pil sayesinde bir sonraki WiFi/NTP kesintisinde zaman korunur.
+static void syncRtcFromNtpIfNeeded() {
+    if (rtcSyncedFromNtp || !network.isTimeSet() || !rtcManager.isAvailable()) return;
+
+    rtcManager.syncFromEpoch(time(nullptr));
+    rtcSyncedFromNtp = true;
+}
 
 static std::string createEventId() {
     uint32_t a = esp_random();
@@ -139,7 +169,7 @@ static void processCredential(const String &credential, bool isCard) {
     event.cihazId = DEVICE_ID;
     event.kapiId = DOOR_ID;
     event.dogrulamaYontemi = isCard ? "kart" : "pin";
-    event.timestampEpoch = time(nullptr);
+    event.timestampEpoch = currentEpoch();
 
     if (isCard) {
         event.okunanUid = std::string(credential.c_str());
@@ -350,6 +380,8 @@ void setup() {
     pinMode(SENSOR_PIN, INPUT);
     lcdDisplay.begin();
     lcdDisplay.showBoot();
+    rtcManager.begin();
+    CardReader::setZamanKaynagi(&currentEpoch, &isTimeFromRtc);
     lock.begin();
     alertSystem.begin();
     cardReader.begin();
@@ -374,6 +406,7 @@ void setup() {
 
 void loop() {
     network.update();
+    syncRtcFromNtpIfNeeded();
     mqttManager.update();
     accessControl.loop();
     processPendingCommands();
