@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <esp_system.h>
+#include <sys/time.h>
 #include <time.h>
 
 #include "config.h"
@@ -52,6 +53,7 @@ KeypadInput keypadInput(
 struct PendingAccessRequest {
     bool active = false;
     std::string requestId;
+    std::string credential;
     bool isCard = false;
     uint32_t sentAtMs = 0;
 };
@@ -71,6 +73,7 @@ static uint32_t doorOpenedAtMs = 0;
 static bool doorOpenAlarmActive = false;
 static constexpr uint32_t DOOR_OPEN_ALARM_DELAY_MS = 20000;
 static Durum lastLcdWorkflowState = Durum::ALARM;
+static bool lastAccessFailureWasConnection = false;
 static bool rtcSyncedFromNtp = false;
 
 // NTP zaman senkronize olduysa sistem saatini (mevcut davranis), degilse
@@ -132,6 +135,8 @@ static void publishOrQueue(EntryEvent &event, const String &queueValue) {
 }
 
 static void applyAccessDecision(bool allowed, const std::string &reason = "") {
+    lastAccessFailureWasConnection = false;
+
     if (allowed) {
         Serial.println("[AUTH] MQTT sunucu karari: ONAYLANDI.");
         DoorState::durumGecisiYap(Durum::ONAYLANDI);
@@ -151,6 +156,16 @@ static void applyAccessDecision(bool allowed, const std::string &reason = "") {
         DoorState::durumGecisiYap(Durum::REDDEDILDI);
         alertSystem.playAccessDenied();
     }
+}
+
+static void applyConnectionUnavailable() {
+    lastAccessFailureWasConnection = true;
+    Serial.println(
+        "[AUTH] DOGRU/YANLIS karari verilemedi: MQTT baglantisi yok. "
+        "Kapi guvenlik geregi KAPALI kaldi."
+    );
+    DoorState::durumGecisiYap(Durum::REDDEDILDI);
+    lcdDisplay.showConnectionUnavailable();
 }
 
 static void processCredential(const String &credential, bool isCard) {
@@ -180,6 +195,7 @@ static void processCredential(const String &credential, bool isCard) {
     if (mqttManager.publishEntryEvent(event)) {
         pendingAccess.active = true;
         pendingAccess.requestId = event.cihazOlayId;
+        pendingAccess.credential = std::string(credential.c_str());
         pendingAccess.isCard = isCard;
         pendingAccess.sentAtMs = millis();
         DoorState::durumGecisiYap(Durum::OKUNUYOR);
@@ -194,14 +210,16 @@ static void processCredential(const String &credential, bool isCard) {
     const bool allowed = accessControl.verifyOfflineAccess(credential, isCard);
     event.sonuc = allowed ? "izin" : "red";
 
-    if (!isCard) {
-        event.kullaniciId = std::string(accessControl.getLastOfflineUserId().c_str());
-    }
+    event.kullaniciId = std::string(accessControl.getLastOfflineUserId().c_str());
     if (!allowed) {
         event.redNedeni = isCard ? "mqtt_yok_kart_dogrulanamadi" : "gecersiz_pin";
     }
 
-    applyAccessDecision(allowed, event.redNedeni);
+    if (allowed) {
+        applyAccessDecision(true);
+    } else {
+        applyAccessDecision(false, "cevrimdisi_yetki_bulunamadi");
+    }
     const String queueValue = isCard ? credential : accessControl.getLastOfflineUserId();
     publishOrQueue(event, queueValue);
 }
@@ -230,6 +248,17 @@ static void processPendingCommands() {
                 continue;
             }
 
+            if (
+                command.accessAllowed
+                && !pendingAccess.isCard
+                && !command.accessUserId.empty()
+            ) {
+                accessControl.rememberOfflineAccess(
+                    String(pendingAccess.credential.c_str()),
+                    pendingAccess.isCard,
+                    String(command.accessUserId.c_str())
+                );
+            }
             applyAccessDecision(command.accessAllowed, command.accessReason);
             pendingAccess = PendingAccessRequest{};
         }
@@ -242,8 +271,7 @@ static void checkAccessResponseTimeout() {
         && millis() - pendingAccess.sentAtMs >= ACCESS_RESPONSE_TIMEOUT_MS
     ) {
         Serial.println("[AUTH] MQTT erisim cevabi zaman asimina ugradi; kapi KAPALI kaldi.");
-        DoorState::durumGecisiYap(Durum::REDDEDILDI);
-        alertSystem.playAccessDenied();
+        applyConnectionUnavailable();
         pendingAccess = PendingAccessRequest{};
     }
 }
@@ -354,6 +382,7 @@ static void updateLcdWorkflowState() {
 
     switch (currentState) {
         case Durum::BEKLEMEDE:
+            lastAccessFailureWasConnection = false;
             lcdDisplay.showIdle(lastDoorPhysicallyOpen);
             break;
         case Durum::OKUNUYOR:
@@ -363,7 +392,11 @@ static void updateLcdWorkflowState() {
             lcdDisplay.showApproved();
             break;
         case Durum::REDDEDILDI:
-            lcdDisplay.showDenied();
+            if (lastAccessFailureWasConnection) {
+                lcdDisplay.showConnectionUnavailable();
+            } else {
+                lcdDisplay.showDenied();
+            }
             break;
         case Durum::ALARM:
             lcdDisplay.showAlarm();
@@ -381,6 +414,14 @@ void setup() {
     lcdDisplay.begin();
     lcdDisplay.showBoot();
     rtcManager.begin();
+    if (rtcManager.isAvailable() && !rtcManager.lostPower()) {
+        const time_t rtcEpoch = rtcManager.getEpoch();
+        if (rtcEpoch > 1700000000) {
+            timeval systemTime = { rtcEpoch, 0 };
+            settimeofday(&systemTime, nullptr);
+            Serial.println("[RTC] Sistem saati Wi-Fi/EAP oncesinde RTC'den ayarlandi.");
+        }
+    }
     CardReader::setZamanKaynagi(&currentEpoch, &isTimeFromRtc);
     lock.begin();
     alertSystem.begin();

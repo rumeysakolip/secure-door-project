@@ -1682,7 +1682,9 @@ code {
 .standalone-page {
   min-height: 100vh;
   padding: 32px;
-  background: var(--bg-page);
+  background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.1), transparent 34%),
+    var(--bg-page);
 }
 
 .standalone-brand {
@@ -1740,6 +1742,56 @@ code {
   display: grid;
   gap: 20px;
   padding: 24px;
+}
+
+body[data-page="issue-report"] {
+  min-width: 0;
+  background: var(--bg-page);
+}
+
+body[data-page="issue-report"] .card-box {
+  overflow: hidden;
+  box-shadow: 0 18px 44px rgba(15, 39, 66, 0.1);
+}
+
+body[data-page="issue-report"] .ticket-header-icon {
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+body[data-page="issue-report"] .ticket-form > .btn-primary {
+  width: 100%;
+  min-height: 48px;
+}
+
+.standalone-footer {
+  margin: 20px auto 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .standalone-page {
+    padding: 20px 14px 28px;
+  }
+
+  .standalone-brand {
+    justify-content: flex-start;
+    margin: 0 auto 18px;
+    max-width: 720px;
+  }
+
+  .ticket-header,
+  .ticket-form {
+    padding: 20px;
+  }
+
+  .ticket-form .form-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Şifre sıfırlama penceresi */

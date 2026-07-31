@@ -13,6 +13,11 @@ private:
 #ifdef ARDUINO
     Preferences preferences;
     String _lastOfflineUserId;
+    String _pinSalt;
+
+    String hashPin(const String &pin) const;
+    String findUserByHashedPin(const String &jsonList, const String &pin) const;
+    void migratePlaintextPins();
 #endif
 
 public:
@@ -21,9 +26,12 @@ public:
     void begin();
     void loop();
 
-    // Yalnizca MQTT baglantisi yokken yerel PIN listesini kontrol eder.
-    // Kart dogrulamasi her zaman backend tarafinda MQTT ile yapilir.
+    // MQTT baglantisi yokken yalnizca kalici yerel PIN listesini kontrol eder.
+    // Kartlar guvenlik geregi her zaman MQTT sunucusundan dogrulanir.
     bool verifyOfflineAccess(String authData, bool isCard);
+
+    // Sunucunun onayladigi kart/PIN'i sonraki cevrimdisi kullanim icin saklar.
+    void rememberOfflineAccess(String authData, bool isCard, String userId);
 
     void syncOfflinePins(String jsonList, bool replaceList = true);
     String getLastOfflineUserId();
@@ -33,6 +41,7 @@ public:
         const std::string &jsonList,
         const std::string &pin
     );
+
 };
 
 #endif

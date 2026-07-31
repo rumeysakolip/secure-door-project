@@ -13,9 +13,10 @@ private:
     const char* password;
     
     unsigned long previousMillis;
-    const long interval = 10000; // Wi-Fi koptuğunda her 10 saniyede bir bağlanmayı dener
+    const long interval = 60000; // Kurumsal EAP oturumunun tamamlanmasi icin 60 saniye bekle
     
     bool timeSynced;
+    void startConnection();
 
     // Sadece bu sınıfın içinde kullanılacak özel saat çekme fonksiyonu
     void syncTime(); 

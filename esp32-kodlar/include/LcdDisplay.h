@@ -19,6 +19,7 @@ public:
     void showChecking();
     void showApproved();
     void showDenied();
+    void showConnectionUnavailable();
     void showAlarm();
 
 private:

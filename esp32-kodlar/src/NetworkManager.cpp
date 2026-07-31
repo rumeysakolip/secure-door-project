@@ -9,9 +9,9 @@ static void logWifiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
     if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
         Serial.printf(
             "[Wi-Fi] Baglanti KOPTU. Sebep kodu: %d "
-            "(bu kodu ESP-IDF wifi_err_reason_t listesinde arayin; "
-            "orn. 2=AUTH_EXPIRE, 15=4WAY_HANDSHAKE_TIMEOUT, "
-            "202-207 arasi EAP/kimlik dogrulama hatalarini gosterir)\n",
+            "(39=TIMEOUT, 201=AP_BULUNAMADI, 202=AUTH_FAIL, "
+            "203=ASSOC_FAIL, 204=HANDSHAKE_TIMEOUT, "
+            "205=CONNECTION_FAIL)\n",
             info.wifi_sta_disconnected.reason
         );
     } else if (event == ARDUINO_EVENT_WIFI_STA_CONNECTED) {
@@ -42,32 +42,16 @@ void NetworkManager::begin() {
     Serial.begin(115200); // Terminal (Seri Port) ekranı için
     
     WiFi.onEvent(logWifiEvent);
-    WiFi.disconnect(true);
+    WiFi.disconnect(true, true);
+    delay(100);
     WiFi.mode(WIFI_STA); // ESP32'yi bir istemci (istasyon) moduna alıyoruz
+    WiFi.setAutoReconnect(false);
+    WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+    WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+    WiFi.setSleep(false);
+    WiFi.setTxPower(WIFI_POWER_19_5dBm);
 
-    if (identity != nullptr && strlen(identity) > 0) {
-        esp_wifi_sta_wpa2_ent_set_identity(
-            reinterpret_cast<const uint8_t*>(identity),
-            strlen(identity)
-        );
-        esp_wifi_sta_wpa2_ent_set_username(
-            reinterpret_cast<const uint8_t*>(username),
-            strlen(username)
-        );
-        esp_wifi_sta_wpa2_ent_set_password(
-            reinterpret_cast<const uint8_t*>(password),
-            strlen(password)
-        );
-        // subu.edu.tr eduroam RADIUS'u Windows'un varsayilan EAP-TTLS
-        // istemcisiyle (MSCHAPv2) calisiyor; ESP32 tarafinda da ayni ic
-        // (phase2) yontemi kullanmak gerekiyor. PAP kabul edilmiyorsa
-        // baglanti sessizce (auth reddi ile) basarisiz olur.
-        esp_wifi_sta_wpa2_ent_set_ttls_phase2_method(ESP_EAP_TTLS_PHASE2_MSCHAPV2);
-        esp_wifi_sta_wpa2_ent_enable();
-        WiFi.begin(ssid);
-    } else {
-        WiFi.begin(ssid, password);
-    }
+    startConnection();
     
     Serial.print("\n[Wi-Fi] Baglaniliyor: ");
     Serial.println(ssid);
@@ -75,6 +59,45 @@ void NetworkManager::begin() {
     // Zaman sunucularını (NTP) ayarlıyoruz. 
     // Türkiye UTC+3 dilimindedir (3 saat * 3600 saniye = 10800). Yaz saati uygulamamız yok (0).
     configTime(10800, 0, "pool.ntp.org", "time.nist.gov");
+}
+
+void NetworkManager::startConnection() {
+    if (identity != nullptr && strlen(identity) > 0) {
+        // SUBU eduroam: EAP-TTLS + PAP. Her denemede temiz olarak yeniden
+        // uygulanir; bu, eski bir EAP oturumunun kullanilmasini onler.
+        esp_wifi_sta_wpa2_ent_disable();
+        const esp_err_t identityResult = esp_wifi_sta_wpa2_ent_set_identity(
+            reinterpret_cast<const uint8_t*>(identity),
+            strlen(identity)
+        );
+        const esp_err_t usernameResult = esp_wifi_sta_wpa2_ent_set_username(
+            reinterpret_cast<const uint8_t*>(username),
+            strlen(username)
+        );
+        const esp_err_t passwordResult = esp_wifi_sta_wpa2_ent_set_password(
+            reinterpret_cast<const uint8_t*>(password),
+            strlen(password)
+        );
+        const esp_err_t phase2Result =
+            esp_wifi_sta_wpa2_ent_set_ttls_phase2_method(ESP_EAP_TTLS_PHASE2_PAP);
+        const esp_err_t enableResult = esp_wifi_sta_wpa2_ent_enable();
+        const wl_status_t beginResult = WiFi.begin(ssid);
+        Serial.printf(
+            "[Wi-Fi] eduroam EAP-TTLS/PAP baslatildi "
+            "(kimlik=%d, kullanici=%d, parola=%d, phase2=%d, enable=%d, "
+            "baslangic=%d; 0=ayar OK).\n",
+            identityResult,
+            usernameResult,
+            passwordResult,
+            phase2Result,
+            enableResult,
+            static_cast<int>(beginResult)
+        );
+    } else {
+        WiFi.begin(ssid, password);
+    }
+
+    previousMillis = millis();
 }
 
 // 3. Arka Plan Güncelleyici (loop içinde sürekli çağrılacak)
@@ -86,8 +109,8 @@ void NetworkManager::update() {
     if ((WiFi.status() != WL_CONNECTED) && (currentMillis - previousMillis >= interval)) {
         Serial.println("[Wi-Fi] Baglanti koptu! Yeniden baglaniliyor...");
         WiFi.disconnect();
-        WiFi.reconnect();
-        previousMillis = currentMillis;
+        delay(100);
+        startConnection();
         timeSynced = false; // İnternet koptuğu için saatin güncelliği tehlikeye girer
     } 
     

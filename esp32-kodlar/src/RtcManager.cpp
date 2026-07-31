@@ -1,4 +1,5 @@
 #include "RtcManager.h"
+#include "config.h"
 
 RtcManager::RtcManager(uint8_t sdaPin, uint8_t sclPin)
     : _sdaPin(sdaPin), _sclPin(sclPin), _available(false) {}
@@ -59,9 +60,10 @@ bool RtcManager::lostPower() {
 void RtcManager::printTime() {
     if (!_available) return;
 
-    DateTime now = _rtc.now();
+    // RTC UTC tutar; terminalde Turkiye yerel saati gosterilir.
+    DateTime now = _rtc.now() + TimeSpan(ZAMAN_DILIMI_DK * 60);
     Serial.printf(
-        "[RTC] Mevcut zaman: %04d-%02d-%02d %02d:%02d:%02d\n",
+        "[RTC] Mevcut yerel zaman: %04d-%02d-%02d %02d:%02d:%02d\n",
         now.year(), now.month(), now.day(),
         now.hour(), now.minute(), now.second()
     );

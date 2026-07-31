@@ -3,25 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arıza Bildir | QR Mobil</title>
-  <link rel="stylesheet" href="style.css?v=20260729-4">
-  <script src="auth-guard.js?v=20260728-1"></script>
-  <script src="script.js?v=20260729-5" defer></script>
+  <title>Arıza Bildir | SecureLab</title>
+  <link rel="stylesheet" href="style.css?v=20260731-1">
+  <script src="ariza-bildir.js?v=20260731-1" defer></script>
 </head>
-<body data-page="issue-report" data-auth-required="true">
+<body data-page="issue-report">
   <main class="standalone-page">
     <div class="standalone-brand">
       <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>
-      <div><strong>SecureLab</strong><small>Teknik Destek Merkezi</small></div>
+      <div><strong>SecureLab</strong><small>Öğrenci Arıza Bildirim Formu</small></div>
     </div>
 
     <div class="mobile-card">
       <article class="card-box">
         <header class="ticket-header">
           <span class="ticket-header-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3M14 16l6-6 2 2-6 6"/></svg></span>
-          <div class="eyebrow">Yeni destek kaydı</div>
-          <h1 class="page-title">Sistem Arıza Bildirimi</h1>
-          <p class="page-description">Kapı, kart okuyucu veya diğer donanımlarla ilgili sorunu teknik ekibe iletin.</p>
+          <div class="eyebrow">QR teknik destek</div>
+          <h1 class="page-title">Arıza Bildir</h1>
+          <p class="page-description">Kapı veya erişim ekipmanında gördüğünüz sorunu teknik ekibe iletin. Bu form için giriş yapmanız gerekmez.</p>
         </header>
 
         <form class="ticket-form" id="issue-report-form">
@@ -53,8 +52,8 @@
 
           <div class="form-group">
             <label class="form-label">Arıza Fotoğrafı Yükle / Çek</label>
-            <input type="file" id="filePicker" accept="image/*" hidden onchange="updateFileName(this)">
-            <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden onchange="updateFileName(this)">
+            <input type="file" id="filePicker" accept="image/*" hidden>
+            <input type="file" id="cameraInput" accept="image/*" capture="environment" hidden>
             <div class="file-input-box">
               <label for="filePicker" class="file-text" id="fileNameText">Dosya seçmek için tıklayın</label>
               <label for="cameraInput" class="camera-btn" title="Kamerayı aç" aria-label="Kamerayı aç">
@@ -73,15 +72,19 @@
             <span>Gönderdiğiniz bilgiler yalnızca teknik inceleme amacıyla kullanılacaktır.</span>
           </div>
 
-          <div id="issue-report-message" class="form-message" role="status" aria-live="polite"></div>
+          <div id="issue-report-message" class="form-message form-message-info" role="status" aria-live="polite">
+            Formu doldurduktan sonra bildiriminiz doğrudan teknik ekibe gönderilir.
+          </div>
 
-          <button type="submit" class="btn-primary" id="issue-report-submit" disabled>
+          <button type="submit" class="btn-primary" id="issue-report-submit">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
             Bildirimi Gönder
           </button>
         </form>
       </article>
     </div>
+
+    <p class="standalone-footer">SecureLab Teknik Destek</p>
   </main>
 
 </body>

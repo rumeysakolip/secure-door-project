@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Öğrenci Arıza Bildirimi QR Kodu | SecureLab</title>
+  <link rel="stylesheet" href="style.css?v=20260731-1">
+  <style>
+    body {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 32px 16px;
+      background: #eef4fb;
+    }
+
+    .qr-sheet {
+      width: min(100%, 560px);
+      padding: 40px;
+      text-align: center;
+      border: 1px solid #d8e2ef;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: 0 22px 55px rgba(15, 47, 77, 0.14);
+    }
+
+    .qr-brand {
+      color: #0f2f4d;
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .qr-sheet h1 {
+      margin: 18px 0 8px;
+      color: #111827;
+      font-size: clamp(28px, 5vw, 40px);
+    }
+
+    .qr-sheet p {
+      margin: 0 auto;
+      color: #52657a;
+      line-height: 1.6;
+    }
+
+    .qr-image {
+      display: block;
+      width: min(100%, 360px);
+      height: auto;
+      margin: 28px auto 20px;
+      border: 12px solid #fff;
+    }
+
+    .qr-url {
+      display: block;
+      margin: 16px 0 24px;
+      color: #0f2f4d;
+      font-size: 14px;
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .qr-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    @media print {
+      body { padding: 0; background: #fff; }
+      .qr-sheet { width: 100%; border: 0; box-shadow: none; }
+      .qr-actions { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="qr-sheet">
+    <div class="qr-brand">SecureLab Teknik Destek</div>
+    <h1>Arıza mı var?</h1>
+    <p>Telefon kameranızla QR kodu okutun ve öğrenci arıza bildirim formunu doldurun.</p>
+
+    <img class="qr-image" src="assets/ogrenci-ariza-qr.png" alt="Öğrenci arıza bildirim formu QR kodu">
+    <span class="qr-url">http://10.7.244.25:8080/ogrenci-ariza</span>
+
+    <div class="qr-actions">
+      <button type="button" class="btn-primary" onclick="window.print()">QR Kodunu Yazdır</button>
+      <a class="btn-secondary" href="ogrenci-ariza">Formu Aç</a>
+    </div>
+  </main>
+</body>
+</html>

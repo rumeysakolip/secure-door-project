@@ -118,6 +118,10 @@ void LcdDisplay::showDenied() {
     showLines("REDDEDILDI", "KAPI KAPALI");
 }
 
+void LcdDisplay::showConnectionUnavailable() {
+    showLines("BAGLANTI YOK", "TEKRAR DENEYIN");
+}
+
 void LcdDisplay::showAlarm() {
     showLines("UYARI / ALARM", "Kapiyi kontrol");
 }
