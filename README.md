@@ -27,10 +27,19 @@ Frontend aynı adres üzerindeki `/api` yolunu backend servisine yönlendirir. B
 
 | Rol | E-posta | Varsayılan parola |
 |---|---|---|
-| Yönetici | `admin@subu.edu.tr` | `123456` |
+| Yönetici | `admin@securelab.local` | `SecureLab2026!` |
 | Öğretim görevlisi | `ahmet@subu.edu.tr` | `123456` |
 
 Parolalar `.env` içindeki `SEED_ADMIN_PASSWORD` ve `SEED_HOCA_PASSWORD` değerleriyle değiştirilebilir. Üretim ortamında varsayılan parola ve anahtarları mutlaka değiştirin.
+
+Yönetici hesabı kullanıcı ekleme, silme ve kart yetkilendirme işlemlerine erişen tek hesaptır. Diğer hesaplar yönetici rolüne yükseltilmez.
+
+## Şifre sıfırlama ve QR arıza formu
+
+- "Şifremi unuttum" bağlantısının e-posta gönderebilmesi için `.env` dosyasındaki SMTP ayarlarını doldurun.
+- Yerel geliştirmede sıfırlama bağlantısı ekranda gösterilebilir; üretimde yalnızca e-posta ile gönderilir ve 15 dakika geçerlidir.
+- Telefonla okutulacak kalıcı QR adresini `PUBLIC_ISSUE_URL` ile HTTPS kullanan, ağdan erişilebilir bir alan adına ayarlayın.
+- `localhost` adresi yalnızca aynı bilgisayarda çalışır; telefondan açılamaz.
 
 ## Servisler
 

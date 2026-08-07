@@ -2255,6 +2255,185 @@ html.auth-pending body {
   border-color: var(--primary, #2f6bff);
 }
 
+.status-cycle-button {
+  min-width: 142px;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 8px 10px 8px 12px;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+
+.status-cycle-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 39, 66, 0.1);
+  filter: saturate(1.08);
+}
+
+.status-cycle-button:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.22);
+  outline-offset: 2px;
+}
+
+.status-cycle-button .status-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-cycle-icon {
+  margin-left: auto;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.form-message-link {
+  display: inline-block;
+  margin-top: 8px;
+  color: inherit;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.user-metrics-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.qr-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 16px;
+  background: radial-gradient(circle at 50% 0%, #ffffff 0, #eef4fb 54%, #e7eef8 100%);
+}
+
+.qr-sheet {
+  width: min(100%, 640px);
+  padding: clamp(24px, 5vw, 42px);
+  text-align: center;
+  border: 1px solid #d8e2ef;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 22px 55px rgba(15, 47, 77, 0.14);
+}
+
+.qr-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  color: #0f2f4d;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.qr-brand .brand-mark {
+  width: 44px;
+  height: 44px;
+}
+
+.qr-sheet h1 {
+  margin: 24px 0 8px;
+  color: #111827;
+  font-size: clamp(28px, 5vw, 40px);
+}
+
+.qr-sheet > p {
+  margin: 0 auto;
+  color: #52657a;
+  line-height: 1.6;
+}
+
+.qr-image {
+  display: block;
+  width: min(100%, 360px);
+  height: auto;
+  margin: 24px auto 14px;
+  border: 10px solid #fff;
+  border-radius: 16px;
+  box-shadow: 0 0 0 1px #e2e8f0;
+}
+
+.qr-loading {
+  margin: 28px 0;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.qr-url {
+  display: block;
+  margin: 14px 0 20px;
+  color: #0f2f4d;
+  font-size: 14px;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.qr-address-form {
+  margin: 22px 0;
+  padding: 18px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-subtle);
+}
+
+.qr-address-form > label {
+  display: block;
+  margin-bottom: 9px;
+  font-weight: 750;
+}
+
+.qr-address-form > small {
+  display: block;
+  margin-top: 9px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.qr-address-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.qr-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 760px) {
+  .user-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .qr-address-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .qr-actions > * {
+    flex: 1 1 100%;
+  }
+}
+
+@media print {
+  .qr-page { padding: 0; background: #fff; }
+  .qr-sheet { width: 100%; border: 0; box-shadow: none; }
+  .qr-address-form, .qr-actions, #qr-network-warning { display: none !important; }
+}
+
 /* =========================================================
    SecureLab 2026 ortak arayüz sistemi
    ========================================================= */
@@ -3736,6 +3915,21 @@ textarea.form-control {
   min-width: 0;
 }
 
+#admin-pin-history-table {
+  table-layout: fixed;
+}
+
+#admin-pin-history-table th,
+#admin-pin-history-table td {
+  padding-inline: 10px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+#admin-pin-history-table th:first-child {
+  width: 22%;
+}
+
 .field-hint {
   display: block;
   margin-top: 7px;
@@ -3808,6 +4002,10 @@ textarea.form-control {
 
 .compact-table table {
   min-width: 620px;
+}
+
+.compact-table #admin-pin-history-table {
+  min-width: 100%;
 }
 
 .account-security-grid .card-box {

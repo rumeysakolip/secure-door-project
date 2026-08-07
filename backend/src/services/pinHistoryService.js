@@ -70,20 +70,23 @@ async function listPinHistory(kullaniciId, limit = 50) {
   });
   const now = Date.now();
   return records.map((record) => {
-    let pin = null;
-    try {
-      pin = decryptPin(record.pinSifreli);
-    } catch (error) {
-      pin = null;
-    }
     const expired = Boolean(record.gecerlilikBitis && record.gecerlilikBitis.getTime() <= now);
+    const isCurrent = record.aktif && !expired;
+    let pin = null;
+    if (isCurrent) {
+      try {
+        pin = decryptPin(record.pinSifreli);
+      } catch (error) {
+        pin = null;
+      }
+    }
     return {
       kapiSifreId: record.kapiSifreId.toString(),
       pin,
       gizli: !pin,
       kaynak: record.kaynak,
-      aktif: record.aktif && !expired,
-      durum: record.aktif && !expired ? 'Güncel' : (expired ? 'Süresi doldu' : 'Geçmiş'),
+      aktif: isCurrent,
+      durum: isCurrent ? 'Güncel' : (expired ? 'Süresi doldu' : 'Geçmiş'),
       olusturulma: record.olusturulma,
       gecerlilikBitis: record.gecerlilikBitis
     };

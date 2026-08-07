@@ -52,14 +52,23 @@ services:
 
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      NODE_ENV: development
+      NODE_ENV: ${NODE_ENV:-development}
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET:-securelab-development-only-secret}
       PIN_HISTORY_ENCRYPTION_KEY: ${PIN_HISTORY_ENCRYPTION_KEY:-securelab-development-pin-history-key}
-      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-ahmet@subu.edu.tr}
-      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-123456}
-      SEED_ADMIN_PIN: ${SEED_ADMIN_PIN:-654321}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@securelab.local}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-SecureLab2026!}
+      SEED_ADMIN_PIN: ${SEED_ADMIN_PIN:-864209}
       ALLOW_DEV_PASSWORD_RESET: ${ALLOW_DEV_PASSWORD_RESET:-true}
+      PASSWORD_RESET_BASE_URL: ${PASSWORD_RESET_BASE_URL:-http://localhost:8080/sifre-sifirla.html}
+      PUBLIC_ISSUE_URL: ${PUBLIC_ISSUE_URL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       MQTT_BROKER_URL: ${MQTT_BROKER_URL}
       MQTT_USERNAME: ${MQTT_USERNAME}
       MQTT_PASSWORD: ${MQTT_PASSWORD}

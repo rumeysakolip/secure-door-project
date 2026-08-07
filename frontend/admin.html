@@ -3,124 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Yönetici Merkezi | SecureLab</title>
-  <link rel="stylesheet" href="style.css?v=20260807-1">
-  <script src="auth-guard.js?v=20260728-1"></script>
-  <script src="script.js?v=20260807-1" defer></script>
+  <title>Kullanıcı Yönetimi | SecureLab</title>
+  <link rel="stylesheet" href="style.css?v=20260807-4">
+  <script src="auth-guard.js?v=20260807-4"></script>
+  <script src="script.js?v=20260807-4" defer></script>
 </head>
 <body data-page="admin" data-auth-required="true" data-roles="admin">
   <div class="app-shell">
     <nav class="navbar" id="main-navigation" aria-label="Ana navigasyon">
-      <div class="brand">
-        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>
-        <div class="brand-copy"><div class="logo">SecureLab</div><small>Erişim Yönetim Platformu</small></div>
-      </div>
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span><div class="brand-copy"><div class="logo">SecureLab</div><small>Erişim Yönetim Platformu</small></div></div>
       <div class="nav-section-label">Yönetim</div>
-      <div class="nav-links">
-        <a class="active" href="admin.html" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span>Ana Sayfa</span></a>
-        <a href="gecici-sifre.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m12 11 8-8M15 6l3 3M17 4l3 3"/></svg><span>Geçici Şifre</span></a>
-        <a href="gecmis-girisler.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg><span>Giriş Geçmişi</span></a>
-        <a href="yetkilendirme.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m16 11 2 2 4-4"/></svg><span>Yetkilendirme</span></a>
-        <a href="ariza-gecmisi.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3M14 16l6-6 2 2-6 6"/></svg><span>Arıza Geçmişi</span></a>
-        <a class="logout-link" href="login.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span>Çıkış Yap</span></a>
-      </div>
-      <div class="sidebar-meta"><div class="sidebar-meta-row"><span class="sidebar-avatar">AD</span><div><strong>Yönetici Oturumu</strong><small>Tam erişim</small></div></div></div>
+      <div class="nav-links"></div>
+      <div class="sidebar-meta"><div class="sidebar-meta-row"><span class="sidebar-avatar">SL</span><div><strong>Yönetici</strong><small>Tam erişim</small></div></div></div>
     </nav>
     <div class="menu-backdrop" aria-hidden="true"></div>
 
     <main class="main-panel">
       <header class="topbar">
         <button type="button" class="menu-toggle" aria-expanded="false" aria-controls="main-navigation" aria-label="Menüyü aç"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-        <div class="topbar-context"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 21h18M6 21V7l6-4 6 4v14M9 10h.01M15 10h.01"/></svg><span>Yönetici Merkezi / Sistem Kontrolü</span></div>
-        <span class="system-pill" id="admin-system-state">Sistem durumu yükleniyor</span>
+        <div class="topbar-context"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg><span>Yönetim / Kullanıcılar</span></div>
+        <span class="system-pill" id="admin-system-state">Kullanıcılar yükleniyor</span>
       </header>
 
-      <div class="container">
+      <div class="container admin-users-page">
         <section class="page-header">
-          <div><div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 3v18M3 12h18"/></svg>Tek yönetici hesabı</div><h1 class="page-title">Yönetici Merkezi</h1><p class="page-subtitle page-description">Kullanıcı hesaplarını, kapı şifrelerini ve laboratuvar altyapısını tek merkezden yönetin.</p></div>
-          <div class="header-actions page-actions"><a class="btn-secondary" href="hesabim.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Hesabım</a></div>
+          <div><div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Yalnızca yönetici erişimi</div><h1 class="page-title">Kullanıcı Yönetimi</h1><p class="page-subtitle page-description">Kullanıcı hesaplarını tek ekrandan ekleyin, arayın, inceleyin ve yönetin.</p></div>
+          <div class="header-actions"><a class="btn-secondary" href="hesabim.html">Yönetici Hesabı</a></div>
         </section>
         <p id="admin-api-status" class="form-message" data-page-status role="status" aria-live="polite" hidden></p>
 
-        <section class="metrics-grid">
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 12h.01M15 12h.01M9 17h6"/></svg></span><span class="badge badge-success">Kapılar</span></div><div class="metric-label">Tanımlı Kapı</div><div class="metric-value" id="admin-door-count">—</div><div class="metric-detail" id="admin-door-detail">Veriler yükleniyor</div></article>
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="6" rx="2"/><path d="M8 10h.01M12 10h.01M16 10h.01M8 14h8"/></svg></span><span class="badge badge-success">Cihazlar</span></div><div class="metric-label">Tanımlı Cihaz</div><div class="metric-value" id="admin-device-count">—</div><div class="metric-detail" id="admin-device-detail">Veriler yükleniyor</div></article>
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg></span><span class="badge badge-info">Kullanıcılar</span></div><div class="metric-label">Tanımlı Kullanıcı</div><div class="metric-value" id="admin-user-count">—</div><div class="metric-detail" id="admin-user-detail">Veriler yükleniyor</div></article>
-          <article class="metric-card"><div class="metric-top"><span class="metric-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0ZM12 9v4M12 17h.01"/></svg></span><span class="badge badge-warning">Kartlar</span></div><div class="metric-label">Tanımlı Kart</div><div class="metric-value" id="admin-card-count">—</div><div class="metric-detail" id="admin-card-detail">Veriler yükleniyor</div></article>
+        <section class="metrics-grid user-metrics-grid">
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><span class="badge badge-info">Toplam</span></div><div class="metric-label">Tüm Kullanıcılar</div><div class="metric-value" id="admin-user-count">—</div><div class="metric-detail" id="admin-user-detail">Kayıtlar yükleniyor</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m5 12 4 4L19 6"/></svg></span><span class="badge badge-success">Aktif</span></div><div class="metric-label">Aktif Hesaplar</div><div class="metric-value" id="admin-active-user-count">—</div><div class="metric-detail">Sisteme giriş yapabilen hesaplar</div></article>
+          <article class="metric-card"><div class="metric-top"><span class="metric-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 9v4M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg></span><span class="badge badge-warning">Pasif</span></div><div class="metric-label">Pasif Hesaplar</div><div class="metric-value" id="admin-passive-user-count">—</div><div class="metric-detail">Geçmişi korunup erişimi kapatılanlar</div></article>
         </section>
 
         <section class="grid-2 admin-account-grid">
           <article class="card-box">
-            <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span><div><h3>Yeni Kullanıcı Ekle</h3><small>Web hesabı ve kişisel kapı PIN'i oluşturun</small></div></div></div>
+            <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span><div><h3>Yeni Kullanıcı Ekle</h3><small>Web hesabı ve kişisel kapı PIN’i oluşturun</small></div></div></div>
             <div class="card-body">
               <form id="admin-user-form">
                 <div class="form-grid">
-                  <div class="form-group"><label for="admin-user-name">Ad</label><input class="form-control" id="admin-user-name" name="ad" autocomplete="off" required></div>
-                  <div class="form-group"><label for="admin-user-surname">Soyad</label><input class="form-control" id="admin-user-surname" name="soyad" autocomplete="off" required></div>
+                  <div class="form-group"><label for="admin-user-name">Ad</label><input class="form-control" id="admin-user-name" name="ad" autocomplete="off" maxlength="64" required></div>
+                  <div class="form-group"><label for="admin-user-surname">Soyad</label><input class="form-control" id="admin-user-surname" name="soyad" autocomplete="off" maxlength="64" required></div>
                 </div>
-                <div class="form-group"><label for="admin-user-email">E-posta</label><input class="form-control" id="admin-user-email" name="eposta" type="email" autocomplete="off" placeholder="kullanici@subu.edu.tr" required></div>
+                <div class="form-group"><label for="admin-user-email">E-posta</label><input class="form-control" id="admin-user-email" name="eposta" type="email" autocomplete="off" maxlength="128" placeholder="kullanici@subu.edu.tr" required></div>
                 <div class="form-grid">
-                  <div class="form-group"><label for="admin-user-password">İlk web şifresi</label><input class="form-control" id="admin-user-password" name="webPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Boşsa otomatik üretilir"><small class="field-hint">En az 8 karakter, harf ve rakam.</small></div>
-                  <div class="form-group"><label for="admin-user-pin">İlk kapı PIN'i</label><input class="form-control" id="admin-user-pin" name="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" placeholder="Boşsa otomatik üretilir"><small class="field-hint">Yalnızca 6 rakam.</small></div>
+                  <div class="form-group"><label for="admin-user-password">İlk web şifresi</label><input class="form-control" id="admin-user-password" name="webPassword" type="password" minlength="8" maxlength="72" autocomplete="new-password" placeholder="Boşsa güvenli oluşturulur"><small class="field-hint">En az 8 karakter, harf ve rakam.</small></div>
+                  <div class="form-group"><label for="admin-user-pin">İlk kapı PIN’i</label><input class="form-control" id="admin-user-pin" name="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="off" placeholder="Boşsa oluşturulur"><small class="field-hint">Yalnızca 6 rakam.</small></div>
                 </div>
                 <div id="admin-user-form-message" class="form-message" role="status" aria-live="polite" hidden></div>
                 <button class="btn-primary btn-block" id="admin-user-submit" type="submit">Kullanıcı Oluştur</button>
               </form>
-              <div class="generated-credentials" id="admin-generated-credentials" hidden>
-                <strong>Yeni kullanıcı bilgileri</strong>
-                <p>Bu bilgiler yalnızca oluşturma işleminden sonra gösterilir.</p>
-                <dl>
-                  <div><dt>E-posta</dt><dd id="generated-user-email">—</dd></div>
-                  <div><dt>İlk web şifresi</dt><dd><code id="generated-user-password">—</code></dd></div>
-                  <div><dt>İlk kapı PIN'i</dt><dd><code id="generated-user-pin">—</code></dd></div>
-                </dl>
-              </div>
+              <div class="generated-credentials" id="admin-generated-credentials" hidden><strong>Yeni kullanıcı bilgileri</strong><p>Bu bilgiler yalnızca oluşturma işleminden sonra gösterilir.</p><dl><div><dt>E-posta</dt><dd id="generated-user-email">—</dd></div><div><dt>İlk web şifresi</dt><dd><code id="generated-user-password">—</code></dd></div><div><dt>İlk kapı PIN’i</dt><dd><code id="generated-user-pin">—</code></dd></div></dl></div>
             </div>
           </article>
 
           <article class="card-box">
-            <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3M12 13v3"/></svg></span><div><h3>Kapı Şifresi Geçmişi</h3><small id="admin-pin-history-user">Tablodan bir kullanıcı seçin</small></div></div></div>
-            <div class="table-wrap compact-table"><table id="admin-pin-history-table"><thead><tr><th>PIN</th><th>Durum</th><th>Oluşturulma</th><th>Geçerlilik</th></tr></thead><tbody><tr><td colspan="4" class="cell-secondary">Şifre geçmişini görmek için kullanıcı seçin.</td></tr></tbody></table></div>
+            <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3M12 13v3"/></svg></span><div><h3>Kapı PIN Geçmişi</h3><small id="admin-pin-history-user">Listeden bir kullanıcı seçin</small></div></div></div>
+            <div class="table-wrap compact-table"><table id="admin-pin-history-table"><thead><tr><th>PIN</th><th>Durum</th><th>Oluşturulma</th><th>Geçerlilik</th></tr></thead><tbody><tr><td colspan="4" class="cell-secondary">PIN geçmişini görmek için kullanıcı seçin.</td></tr></tbody></table></div>
+            <div class="card-footer"><span class="cell-secondary">Güvenlik nedeniyle eski PIN değerleri maskeli gösterilir.</span></div>
           </article>
         </section>
 
         <section class="card-box">
-          <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><div><h3>Kullanıcı Hesapları</h3><small>Standart kullanıcıları ekleyin, inceleyin veya kaldırın</small></div></div><span class="badge badge-neutral" id="admin-users-count">0 kullanıcı</span></div>
-          <div class="table-wrap"><table id="admin-users-table"><thead><tr><th>Kullanıcı</th><th>E-posta</th><th>Rol</th><th>Hesap Durumu</th><th>Kapı Şifresi</th><th>İşlem</th></tr></thead><tbody></tbody></table></div>
-          <div class="card-footer"><span class="cell-secondary">Yönetici hesabı güvenlik nedeniyle silinemez veya başka bir kullanıcıya devredilemez.</span></div>
-        </section>
-
-        <section class="grid-2">
-          <article class="card-box">
-            <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 12h.01M15 12h.01M9 17h6"/></svg></span><div><h3>Laboratuvar Kapısı</h3><small>Canlı altyapı kontrolü</small></div></div><span class="badge badge-neutral" id="admin-infra-state">Durum yükleniyor</span></div>
-            <div class="card-body"><div class="status-list"><div class="status-row"><span class="status-label">Kapı durumu</span><strong class="status-value" id="admin-door-state">Yükleniyor</strong></div><div class="status-row"><span class="status-label">Cihaz bağlantısı</span><strong class="status-value" id="admin-device-state">Yükleniyor</strong></div><div class="status-row"><span class="status-label">Son giriş denemesi</span><strong class="status-value" id="admin-last-access">Yükleniyor</strong></div></div><button type="button" class="btn-primary btn-block" id="remote-door-button" disabled>Laboratuvar Kapısını Aç</button><div id="remote-door-message" class="form-message" role="status" aria-live="polite" hidden></div></div>
-          </article>
-          <article class="card-box">
-            <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2a10 10 0 1 0 10 10M12 6v6l4 2"/></svg></span><div><h3>Hızlı İşlemler</h3><small>Sık kullanılan yönetim bağlantıları</small></div></div></div>
-            <div class="card-body"><div class="activity-list"><a class="activity-item" href="yetkilendirme.html"><span class="activity-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg></span><div class="activity-content"><strong>Kart yetkilendirme</strong><p>Tanımlı kullanıcı ve kart yetkilerini yönetin.</p></div><span class="activity-time">Aç</span></a><a class="activity-item" href="ariza-gecmisi.html"><span class="activity-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2Z"/><path d="m5 8-3 3 10 10 3-3"/></svg></span><div class="activity-content"><strong>Arıza kayıtları</strong><p>Açık ve çözülen teknik bildirimleri inceleyin.</p></div><span class="activity-time">Aç</span></a></div></div>
-          </article>
-        </section>
-
-        <section class="card-box">
-          <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span><div><h3>Son Kapı Giriş Kayıtları</h3><small>Yakın zamanda gerçekleşen erişimler</small></div></div><a class="section-link" href="gecmis-girisler.html">Tüm geçmiş <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 18 6-6-6-6"/></svg></a></div>
-          <div class="table-toolbar">
-            <div class="filter-row">
-              <div class="filter-field">
-                <label for="admin-date-filter">Kayıt tarihi</label>
-                <div class="filter-input-wrap">
-                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M8 2v4M16 2v4M3 10h18"/><rect width="18" height="18" x="3" y="4" rx="2"/></svg>
-                  <input id="admin-date-filter" type="date" class="date-search-bar" data-table-filter="admin-access-table" data-count-target="admin-access-count" aria-controls="admin-access-table">
-                </div>
-              </div>
-              <button type="button" class="btn-secondary filter-clear-btn" data-filter-clear="admin-date-filter" aria-controls="admin-access-table" disabled>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M18 6 6 18M6 6l12 12"/></svg>
-                Temizle
-              </button>
-            </div>
-            <div class="filter-meta"><span class="badge badge-neutral" id="admin-access-count" aria-live="polite">0 kayıt</span></div>
-          </div>
-          <div class="table-wrap"><table id="admin-access-table"><thead><tr><th>Saat</th><th>Kullanıcı</th><th>Rol</th><th>Giriş Yöntemi</th><th>Durum</th></tr></thead><tbody>
-          </tbody></table></div>
+          <div class="card-header"><div class="card-title-group"><span class="card-title-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></span><div><h3>Kullanıcı Listesi</h3><small>Admin dahil tüm tanımlı hesaplar</small></div></div><span class="badge badge-neutral" id="admin-users-count">0 kullanıcı</span></div>
+          <div class="table-wrap"><table id="admin-users-table"><thead><tr><th>Kullanıcı</th><th>E-posta</th><th>Rol</th><th>Hesap Durumu</th><th>Kapı PIN’i</th><th>İşlem</th></tr></thead><tbody></tbody></table></div>
+          <div class="card-footer"><span class="cell-secondary">Tek yönetici hesabı silinemez, pasife alınamaz veya başka bir kullanıcıya devredilemez.</span></div>
         </section>
       </div>
     </main>

@@ -1,7 +1,15 @@
 const express = require('express');
 const router = express.Router();
+const prisma = require('../config/prisma');
 const issueReportService = require('../services/issueReportService');
+const { writeAudit } = require('../services/auditService');
 const { authenticateToken, requireAdmin, requireAdminOrHoca } = require('../middlewares/authMiddleware');
+
+const SUPPORTED_ISSUE_TYPES = new Set([
+    'Kapı', 'RFID okuyucu', 'Tuş takımı', 'Monitör', 'Bilgisayar kasası',
+    'Klavye', 'Fare', 'Kablo, adaptör veya priz', 'Ağ veya internet',
+    'Yazıcı veya projeksiyon', 'Masa veya sandalye', 'Diğer'
+]);
 
 // POST /api/arizalar - QR kod veya form ile yeni arıza bildirimi yapma
 // NOT: Bu, QR kod okutan herkesin (giriş yapmadan) kullandığı bir form,
@@ -9,12 +17,20 @@ const { authenticateToken, requireAdmin, requireAdminOrHoca } = require('../midd
 router.post('/', async (req, res) => {
     try {
         const { reportedBy, issueType, description, photoName, photoData } = req.body;
+        const normalizedType = String(issueType || '').trim();
+        const normalizedDescription = String(description || '').trim();
         
-        if (!issueType || !description) {
+        if (!normalizedType || !normalizedDescription) {
             return res.status(400).json({ 
                 success: false, 
                 error: 'Arıza türü ve açıklaması zorunludur.' 
             });
+        }
+        if (!SUPPORTED_ISSUE_TYPES.has(normalizedType)) {
+            return res.status(400).json({ success: false, error: 'Geçersiz arıza türü.' });
+        }
+        if (normalizedDescription.length < 5 || normalizedDescription.length > 512) {
+            return res.status(400).json({ success: false, error: 'Açıklama 5 ile 512 karakter arasında olmalıdır.' });
         }
         const supportedImage = /^data:image\/(png|jpe?g|webp|gif);base64,/i;
         if (photoData && (!supportedImage.test(String(photoData)) || String(photoData).length > 4_000_000)) {
@@ -25,14 +41,20 @@ router.post('/', async (req, res) => {
         }
 
         const result = await issueReportService.createIssueReport({
-            reportedBy,
-            issueType,
-            description,
-            photoName,
+            reportedBy: String(reportedBy || 'Anonim').trim().slice(0, 128),
+            issueType: normalizedType,
+            description: normalizedDescription,
+            photoName: photoName ? String(photoName).slice(0, 128) : null,
             photoData
         });
 
         if (result.success) {
+            await writeAudit({
+                action: 'olustur',
+                tableName: 'ariza_bildirimi',
+                recordId: result.report.arizaId,
+                after: { arizaTuru: result.report.arizaTuru, durum: result.report.durum }
+            });
             return res.status(201).json(result);
         } else {
             return res.status(500).json(result);
@@ -71,9 +93,22 @@ router.patch('/:id', authenticateToken, requireAdmin, async (req, res) => {
             });
         }
 
+        const before = await prisma.arizaBildirimi.findUnique({
+            where: { arizaId: Number(id) },
+            select: { arizaId: true, durum: true }
+        });
+        if (!before) return res.status(404).json({ success: false, error: 'Arıza kaydı bulunamadı.' });
         const result = await issueReportService.updateReportStatus(id, status);
         
         if (result.success) {
+            await writeAudit({
+                actorId: req.user.kullaniciId,
+                action: 'guncelle',
+                tableName: 'ariza_bildirimi',
+                recordId: id,
+                before: { durum: before.durum },
+                after: { durum: status }
+            });
             return res.json(result);
         } else {
             return res.status(400).json(result);

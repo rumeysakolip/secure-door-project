@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Şifre Yenile | SecureLab</title>
+  <link rel="stylesheet" href="style.css?v=20260807-4">
+  <script src="script.js?v=20260807-4" defer></script>
+</head>
+<body data-page="password-reset">
+  <main class="login-page">
+    <section class="login-showcase" aria-labelledby="reset-hero-title">
+      <div class="login-brand">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+        <div><strong>SecureLab</strong><span>Erişim Yönetim Platformu</span></div>
+      </div>
+      <div class="login-hero">
+        <div class="security-orbit" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3M12 13v3"/></svg></div>
+        <h1 id="reset-hero-title">Hesabınızı güvenle kurtarın.</h1>
+        <p>Tek kullanımlık bağlantıyla web şifrenizi yenileyin. Kapı PIN’iniz bu işlemden etkilenmez.</p>
+        <div class="login-features">
+          <span class="login-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m5 12 4 4L19 6"/></svg>15 dakika geçerli bağlantı</span>
+          <span class="login-feature"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>Eski oturumları otomatik kapatma</span>
+        </div>
+      </div>
+      <div class="login-showcase-footer">SecureLab hesap güvenliği</div>
+    </section>
+
+    <section class="login-form-panel">
+      <div class="login-card">
+        <div class="login-card-header">
+          <div class="eyebrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect width="16" height="12" x="4" y="9" rx="2"/><path d="M8 9V6a4 4 0 0 1 8 0v3"/></svg>Güvenli şifre yenileme</div>
+          <h2 class="page-title">Yeni şifrenizi belirleyin</h2>
+          <p class="page-description">En az 8 karakter, bir harf ve bir rakam kullanın.</p>
+        </div>
+
+        <form id="password-reset-form">
+          <div class="form-group">
+            <label for="reset-new-password">Yeni web şifresi</label>
+            <input id="reset-new-password" name="yeniSifre" type="password" class="form-control" minlength="8" maxlength="72" autocomplete="new-password" required>
+          </div>
+          <div class="form-group">
+            <label for="reset-confirm-password">Yeni şifre tekrar</label>
+            <input id="reset-confirm-password" name="yeniSifreTekrar" type="password" class="form-control" minlength="8" maxlength="72" autocomplete="new-password" required>
+          </div>
+          <div id="password-reset-message" class="form-message" role="alert" aria-live="polite" hidden></div>
+          <button type="submit" class="btn-login" id="password-reset-submit">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 15v2M8 10V7a4 4 0 0 1 8 0v3"/><rect width="16" height="11" x="4" y="10" rx="2"/></svg>
+            Şifreyi Yenile
+          </button>
+        </form>
+        <div class="login-security"><a href="login.html">Giriş sayfasına dön</a></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

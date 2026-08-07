@@ -1130,10 +1130,10 @@ function normalizeNavigation() {
     const links = navigation.querySelector('.nav-links') || createElement('div', 'nav-links');
     const items = [
         { label: 'Ana Sayfa', href: 'index.html', pages: ['dashboard'], path: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z' },
-        { label: 'Admin', href: 'admin.html', pages: ['admin'], path: 'M12 3v18M3 12h18', admin: true },
+        { label: 'Kullanıcılar', href: 'admin.html', pages: ['admin'], path: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM19 8v6M22 11h-6', admin: true },
         { label: 'Geçici Şifre', href: 'gecici-sifre.html', pages: ['temporary-pin'], path: 'M7.5 10a5.5 5.5 0 1 0 5.5 5.5M12 11l8-8M15 6l3 3' },
         { label: 'Giriş Geçmişi', href: 'gecmis-girisler.html', pages: ['access-history'], path: 'M3 12a9 9 0 1 0 3-6.7L3 8V3m9 4v5l3 2' },
-        { label: 'Yetkilendirme', href: 'yetkilendirme.html', pages: ['authorization'], path: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 0 2 2 4-4' },
+        { label: 'Yetkilendirme', href: 'yetkilendirme.html', pages: ['authorization'], path: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 0 2 2 4-4', admin: true },
         { label: 'Arıza Geçmişi', href: 'ariza-gecmisi.html', pages: ['issue-history'], path: 'M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2ZM5 8l-3 3 10 10 3-3' },
         { label: 'Hesabım', href: 'hesabim.html', pages: ['account'], path: 'M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z' },
         { label: 'Çıkış Yap', href: 'login.html', pages: [], path: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9', logout: true }
@@ -1281,7 +1281,7 @@ function enforceRoleAccess(user) {
         .map((item) => item.trim())
         .filter(Boolean);
 
-    document.querySelectorAll('a[href="admin.html"]').forEach((link) => {
+    document.querySelectorAll('[data-admin-link], a[href="admin.html"], a[href="yetkilendirme.html"]').forEach((link) => {
         if (role !== 'admin') link.hidden = true;
     });
     updateAuthenticatedUserUi(user);
@@ -1336,19 +1336,18 @@ async function initLogin() {
         }
 
         forgotButton.disabled = true;
-        setInlineMessage(message, 'Yeni giriş şifresi oluşturuluyor…', 'info');
+        setInlineMessage(message, 'Şifre yenileme bağlantısı hazırlanıyor…', 'info');
         try {
             const response = await apiRequest('/api/auth/forgot-password', {
                 method: 'POST',
                 body: { eposta }
             });
-            setInlineMessage(
-                message,
-                response?.temporaryPassword
-                    ? `Geçici web giriş şifreniz: ${response.temporaryPassword}`
-                    : (response?.message || 'Sıfırlama isteği alındı.'),
-                'success'
-            );
+            setInlineMessage(message, response?.message || 'Şifre yenileme isteği alındı.', 'success');
+            if (response?.resetUrl) {
+                const link = createElement('a', 'form-message-link', 'Geliştirme ortamında şifreyi şimdi yenile');
+                link.href = response.resetUrl;
+                message.append(document.createElement('br'), link);
+            }
         } catch (error) {
             setInlineMessage(message, handleApiError(error), 'error');
         } finally {
@@ -1412,6 +1411,51 @@ async function createKullanici(payload) {
     return apiRequest('/api/kullanicilar', {
         method: 'POST',
         body: payload
+    });
+}
+
+function initPasswordResetPage() {
+    const form = document.getElementById('password-reset-form');
+    const message = document.getElementById('password-reset-message');
+    const submitButton = document.getElementById('password-reset-submit');
+    const token = new URLSearchParams(window.location.search).get('token') || '';
+    if (!form || !submitButton) return;
+
+    if (!token) {
+        setInlineMessage(message, 'Şifre yenileme bağlantısı eksik veya geçersiz.', 'error');
+        submitButton.disabled = true;
+        return;
+    }
+
+    form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = new FormData(form);
+        const yeniSifre = String(formData.get('yeniSifre') || '');
+        const yeniSifreTekrar = String(formData.get('yeniSifreTekrar') || '');
+        if (yeniSifre !== yeniSifreTekrar) {
+            setInlineMessage(message, 'Yeni şifreler eşleşmiyor.', 'error');
+            return;
+        }
+
+        setButtonLoading(submitButton, true, 'Şifre yenileniyor…');
+        try {
+            const response = await apiRequest('/api/auth/reset-password', {
+                method: 'POST',
+                body: { token, yeniSifre, yeniSifreTekrar }
+            });
+            form.reset();
+            clearAuthToken();
+            setInlineMessage(message, response?.message || 'Şifreniz yenilendi.', 'success');
+            const loginLink = createElement('a', 'form-message-link', 'Giriş sayfasına dön');
+            loginLink.href = 'login.html?sifre=yenilendi';
+            message.append(document.createElement('br'), loginLink);
+            submitButton.hidden = true;
+            window.history.replaceState({}, document.title, 'sifre-sifirla.html');
+        } catch (error) {
+            setInlineMessage(message, handleApiError(error), 'error');
+        } finally {
+            setButtonLoading(submitButton, false);
+        }
     });
 }
 
@@ -1534,7 +1578,10 @@ function renderAdminUsers() {
 
 function renderKullanicilar(data) {
     appState.kullanicilar = Array.isArray(data) ? data : [];
+    const activeUsers = appState.kullanicilar.filter((user) => user.durum === 'aktif').length;
     setText('admin-user-count', String(appState.kullanicilar.length));
+    setText('admin-active-user-count', String(activeUsers));
+    setText('admin-passive-user-count', String(appState.kullanicilar.length - activeUsers));
     setText('auth-user-count', String(appState.kullanicilar.length));
     setText('auth-user-count-badge', `${appState.kullanicilar.length} tanımlı kullanıcı`);
     setText('authorization-user-count', String(appState.kullanicilar.length));
@@ -2111,7 +2158,8 @@ async function initAccountPage() {
             const response = await changeOwnWebPassword(payload);
             form.reset();
             setInlineMessage(message, response?.message || 'Web şifreniz güncellendi.', 'success');
-            showToast('Web şifreniz başarıyla değiştirildi.', 'success');
+            clearAuthToken();
+            window.setTimeout(() => window.location.replace('login.html?sifre=degisti'), 900);
         } catch (error) {
             setInlineMessage(message, handleApiError(error), 'error');
             showToast(handleApiError(error), 'error');
@@ -2122,77 +2170,21 @@ async function initAccountPage() {
 }
 
 async function initAdminPage() {
-    const tableBody = document.querySelector('#admin-access-table tbody');
+    const tableBody = document.querySelector('#admin-users-table tbody');
     const status = document.getElementById('admin-api-status');
     showLoading(tableBody);
-    setInlineMessage(status, 'Yönetim verileri yükleniyor…', 'info');
-
-    const requests = [
-        ['kullanicilar', getKullanicilar(), renderKullanicilar],
-        ['kartlar', getKartlar(), renderKartlar],
-        ['kapilar', getKapilar(), renderKapilar],
-        ['cihazlar', getCihazlar(), renderCihazlar],
-        ['cihazDurumlari', getCihazDurumlari(), renderCihazDurumlari],
-        ['erisimKayitlari', getErisimKayitlari(10, 0), (data) => {
-            renderAccessTable('admin-access-table', data, true);
-            renderAdminLastAccess(data);
-        }]
-    ];
-
-    const results = await Promise.allSettled(requests.map(([, request]) => request));
-    const errors = [];
-    results.forEach((result, index) => {
-        const [name, , render] = requests[index];
-        if (result.status === 'fulfilled') {
-            render(result.value);
-        } else {
-            errors.push(`${name}: ${handleApiError(result.reason)}`);
-        }
-    });
-
-    if (errors.length) {
-        if (!tableBody.children.length) showError(tableBody, 'Erişim kayıtları yüklenemedi.');
-        setInlineMessage(status, 'Bazı sistem verileri alınamadı. Lütfen sayfayı yenileyip tekrar deneyin.', 'error');
-    } else {
+    setInlineMessage(status, 'Kullanıcı hesapları yükleniyor…', 'info');
+    try {
+        renderKullanicilar(await getKullanicilar());
         setInlineMessage(status);
-        setText('admin-system-state', 'Sistem verileri güncel');
-        setText('admin-infra-state', 'Canlı API');
+        setText('admin-system-state', 'Kullanıcı listesi güncel');
+    } catch (error) {
+        showError(tableBody, handleApiError(error));
+        setInlineMessage(status, handleApiError(error), 'error');
+        setText('admin-system-state', 'Kullanıcılar yüklenemedi');
     }
 
     initAdminUserManagement();
-
-    const remoteDoorButton = document.getElementById('remote-door-button');
-    if (remoteDoorButton) {
-        remoteDoorButton.disabled = !appState.kapilar.length;
-        remoteDoorButton.addEventListener('click', async () => {
-            const door = appState.kapilar.find((item) => item.durum === 'aktif') || appState.kapilar[0];
-            const message = document.getElementById('remote-door-message');
-            if (!door) return;
-            const confirmed = await openModal({
-                title: 'Kapıyı uzaktan aç',
-                message: `${door.ad} için açma komutu gönderilecek.`,
-                detail: 'Bu işlem fiziksel kapıyı kısa süreli olarak açar.',
-                confirmText: 'Kapıyı Aç',
-                variant: 'danger'
-            });
-            if (!confirmed) return;
-            setButtonLoading(remoteDoorButton, true, 'Komut gönderiliyor…');
-            setInlineMessage(message, 'Kapı açma komutu gönderiliyor…', 'info');
-            try {
-                const response = await apiRequest(`/api/kapilar/${encodeURIComponent(door.kapiId)}/ac`, {
-                    method: 'POST',
-                    body: { reason: 'Yönetim paneli manuel açma işlemi' }
-                });
-                setInlineMessage(message, response?.message || 'Kapı açma komutu gönderildi.', 'success');
-                showToast(response?.message || 'Kapı açma komutu gönderildi.', 'success');
-            } catch (error) {
-                setInlineMessage(message, handleApiError(error), 'error');
-                showToast(handleApiError(error), 'error');
-            } finally {
-                setButtonLoading(remoteDoorButton, false);
-            }
-        });
-    }
 }
 
 async function initDashboardPage() {
@@ -2577,19 +2569,21 @@ function renderArizalar(data) {
             ? 'success'
             : record.durum === 'IN_PROGRESS' ? 'warning' : 'danger';
         if (appState.currentUser?.rol === 'admin') {
-            const select = createElement('select', 'status-select');
-            select.dataset.issueId = String(record.arizaId);
-            [
-                ['OPEN', 'Açık'],
-                ['IN_PROGRESS', 'İnceleniyor'],
-                ['RESOLVED', 'Çözüldü']
-            ].forEach(([value, label]) => {
-                const option = createElement('option', '', label);
-                option.value = value;
-                option.selected = value === record.durum;
-                select.appendChild(option);
-            });
-            statusCell.appendChild(select);
+            const statusOrder = ['OPEN', 'IN_PROGRESS', 'RESOLVED'];
+            const currentIndex = Math.max(statusOrder.indexOf(record.durum), 0);
+            const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
+            const button = createElement('button', `status-cycle-button badge badge-${variant}`);
+            button.type = 'button';
+            button.dataset.issueId = String(record.arizaId);
+            button.dataset.currentStatus = record.durum;
+            button.dataset.nextStatus = nextStatus;
+            button.setAttribute('aria-label', `${record.arizaTuru || 'Arıza'} durumu ${humanizeEnum(record.durum)}. Sonraki durum: ${humanizeEnum(nextStatus)}`);
+            button.append(
+                createElement('span', 'status-dot'),
+                createElement('span', '', humanizeEnum(record.durum)),
+                createElement('span', 'status-cycle-icon', '›')
+            );
+            statusCell.appendChild(button);
         } else {
             statusCell.appendChild(createBadge(humanizeEnum(record.durum), variant));
         }
@@ -2629,33 +2623,29 @@ async function initIssueHistoryPage() {
         setInlineMessage(status, handleApiError(error), 'error');
     }
 
-    tableBody?.addEventListener('change', async (event) => {
-        const select = event.target.closest('[data-issue-id]');
-        if (!select) return;
-        const previousValue = [...select.options].find((option) => option.defaultSelected)?.value || '';
+    tableBody?.addEventListener('click', async (event) => {
+        const button = event.target.closest('.status-cycle-button[data-issue-id]');
+        if (!button) return;
+        const nextStatus = button.dataset.nextStatus;
         const confirmed = await openModal({
             title: 'Arıza durumunu güncelle',
-            message: `Kayıt durumu “${humanizeEnum(select.value)}” olarak değiştirilecek.`,
+            message: `Kayıt durumu “${humanizeEnum(nextStatus)}” olarak değiştirilecek.`,
             confirmText: 'Durumu Güncelle',
-            variant: select.value === 'RESOLVED' ? 'primary' : 'danger'
+            variant: nextStatus === 'RESOLVED' ? 'primary' : 'danger'
         });
-        if (!confirmed) {
-            if (previousValue) select.value = previousValue;
-            else renderArizalar(await getArizalar());
-            return;
-        }
-        select.disabled = true;
+        if (!confirmed) return;
+        button.disabled = true;
         setInlineMessage(status, 'Arıza durumu güncelleniyor…', 'info');
         try {
-            await apiRequest(`/api/arizalar/${encodeURIComponent(select.dataset.issueId)}`, {
+            await apiRequest(`/api/arizalar/${encodeURIComponent(button.dataset.issueId)}`, {
                 method: 'PATCH',
-                body: { status: select.value }
+                body: { status: nextStatus }
             });
             renderArizalar(await getArizalar());
             setInlineMessage(status, 'Arıza durumu güncellendi.', 'success');
             showToast('Arıza durumu güncellendi.', 'success');
         } catch (error) {
-            select.disabled = false;
+            button.disabled = false;
             setInlineMessage(status, handleApiError(error), 'error');
             showToast(handleApiError(error), 'error');
         }
@@ -2756,6 +2746,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         admin: initAdminPage,
         dashboard: initDashboardPage,
         account: initAccountPage,
+        'password-reset': initPasswordResetPage,
         authorization: initAuthorizationPage,
         'temporary-pin': initTemporaryPinPage,
         'access-history': initAccessHistoryPage,

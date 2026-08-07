@@ -1,4 +1,5 @@
 const prisma = require('../config/prisma');
+const { writeAudit } = require('./auditService');
 
 /**
  * 1. ESP32'den bilinmeyen/tanımsız bir kart ID geldiğinde çalışır.
@@ -129,7 +130,7 @@ async function approveCard(kartUid, userId, adminId = null) {
         }
       });
 
-      return tx.kartYetkilendirme.upsert({
+      const permission = await tx.kartYetkilendirme.upsert({
         where: { kartUid: normalizedKartUid },
         update: {
           kullaniciId: kullaniciIdBigInt,
@@ -148,6 +149,19 @@ async function approveCard(kartUid, userId, adminId = null) {
           notlar: 'Yönetici Paneli Üzerinden Onaylandı'
         }
       });
+      await writeAudit({
+        client: tx,
+        actorId: adminIdBigInt,
+        action: 'guncelle',
+        tableName: 'kart_yetkilendirme',
+        recordId: permission.kartYetkiId,
+        after: {
+          kartUid: normalizedKartUid,
+          kullaniciId: kullaniciIdBigInt,
+          durum: 'aktif'
+        }
+      });
+      return permission;
     });
 
     console.log(`[KART ONAYLANDI] ${normalizedKartUid} UID'li kart, User ID: ${userId} kişisine tanımlandı.`);
@@ -169,7 +183,7 @@ async function approveCard(kartUid, userId, adminId = null) {
   }
 }
 
-async function rejectCard(kartUid) {
+async function rejectCard(kartUid, adminId = null) {
   try {
     const normalizedKartUid = String(kartUid).trim().toUpperCase();
     const kart = await prisma.kart.findUnique({
@@ -183,20 +197,29 @@ async function rejectCard(kartUid) {
       };
     }
 
-    await prisma.$transaction([
-      prisma.kart.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.kart.update({
         where: { kartUid: normalizedKartUid },
         data: {
           durum: 'iptal',
           iptalTarihi: new Date(),
           iptalNedeni: 'Yetkilendirme isteği reddedildi'
         }
-      }),
-      prisma.kartYetkilendirme.updateMany({
+      });
+      await tx.kartYetkilendirme.updateMany({
         where: { kartUid: normalizedKartUid },
         data: { durum: 'pasif' }
-      })
-    ]);
+      });
+      await writeAudit({
+        client: tx,
+        actorId: adminId,
+        action: 'guncelle',
+        tableName: 'kart',
+        recordId: normalizedKartUid,
+        before: { durum: kart.durum },
+        after: { durum: 'iptal', sebep: 'yetkilendirme_istegi_reddedildi' }
+      });
+    });
 
     console.log(`[KART REDDEDİLDİ] ${normalizedKartUid} yetkilendirme isteği reddedildi.`);
     return {

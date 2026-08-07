@@ -3,88 +3,35 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
   <title>Öğrenci Arıza Bildirimi QR Kodu | SecureLab</title>
-  <link rel="stylesheet" href="style.css?v=20260731-1">
-  <style>
-    body {
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 32px 16px;
-      background: #eef4fb;
-    }
-
-    .qr-sheet {
-      width: min(100%, 560px);
-      padding: 40px;
-      text-align: center;
-      border: 1px solid #d8e2ef;
-      border-radius: 24px;
-      background: #fff;
-      box-shadow: 0 22px 55px rgba(15, 47, 77, 0.14);
-    }
-
-    .qr-brand {
-      color: #0f2f4d;
-      font-size: 20px;
-      font-weight: 800;
-    }
-
-    .qr-sheet h1 {
-      margin: 18px 0 8px;
-      color: #111827;
-      font-size: clamp(28px, 5vw, 40px);
-    }
-
-    .qr-sheet p {
-      margin: 0 auto;
-      color: #52657a;
-      line-height: 1.6;
-    }
-
-    .qr-image {
-      display: block;
-      width: min(100%, 360px);
-      height: auto;
-      margin: 28px auto 20px;
-      border: 12px solid #fff;
-    }
-
-    .qr-url {
-      display: block;
-      margin: 16px 0 24px;
-      color: #0f2f4d;
-      font-size: 14px;
-      font-weight: 700;
-      overflow-wrap: anywhere;
-    }
-
-    .qr-actions {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    @media print {
-      body { padding: 0; background: #fff; }
-      .qr-sheet { width: 100%; border: 0; box-shadow: none; }
-      .qr-actions { display: none; }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css?v=20260807-4">
+  <script src="qr-kod.js?v=20260807-4" defer></script>
 </head>
-<body>
+<body class="qr-page">
   <main class="qr-sheet">
-    <div class="qr-brand">SecureLab Teknik Destek</div>
+    <div class="qr-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></svg></span><span>SecureLab Teknik Destek</span></div>
     <h1>Arıza mı var?</h1>
     <p>Telefon kameranızla QR kodu okutun ve öğrenci arıza bildirim formunu doldurun.</p>
 
-    <img class="qr-image" src="assets/ogrenci-ariza-qr.png" alt="Öğrenci arıza bildirim formu QR kodu">
-    <span class="qr-url">http://10.7.244.25:8080/ogrenci-ariza</span>
+    <div id="qr-loading" class="qr-loading" role="status">QR kod hazırlanıyor…</div>
+    <img class="qr-image" id="qr-image" alt="Öğrenci arıza bildirim formu QR kodu" hidden>
+    <a class="qr-url" id="qr-url" href="/ogrenci-ariza" target="_blank" rel="noopener">Adres hazırlanıyor…</a>
+    <div class="form-message form-message-warning" id="qr-network-warning" role="status" hidden></div>
+
+    <form class="qr-address-form" id="qr-address-form">
+      <label for="qr-address-input">Telefonların erişebileceği form adresi</label>
+      <div class="qr-address-controls">
+        <input class="form-control" id="qr-address-input" type="url" inputmode="url" placeholder="https://destek.example.edu.tr/ogrenci-ariza" required>
+        <button class="btn-secondary" type="submit">QR’ı Güncelle</button>
+      </div>
+      <small>Alan adı yoksa bilgisayarın yerel ağ adresini kullanın; <strong>localhost</strong> telefonda çalışmaz.</small>
+    </form>
 
     <div class="qr-actions">
-      <button type="button" class="btn-primary" onclick="window.print()">QR Kodunu Yazdır</button>
-      <a class="btn-secondary" href="ogrenci-ariza">Formu Aç</a>
+      <button type="button" class="btn-primary" id="qr-print-button">QR Kodunu Yazdır</button>
+      <button type="button" class="btn-secondary" id="qr-copy-button">Adresi Kopyala</button>
+      <a class="btn-secondary" id="qr-open-button" href="/ogrenci-ariza" target="_blank" rel="noopener">Formu Aç</a>
     </div>
   </main>
 </body>

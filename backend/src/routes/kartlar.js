@@ -26,7 +26,7 @@ router.get('/', authenticateToken, requireAdminOrHoca, async (req, res) => {
 });
 
 // GET /api/kartlar/onay-bekleyenler - Henüz bir kullanıcıya atanmamış kartları getir
-router.get('/onay-bekleyenler', authenticateToken, requireAdminOrHoca, async (req, res) => {
+router.get('/onay-bekleyenler', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const pendingCards = await cardApprovalService.getPendingCards();
         res.json({ success: true, data: pendingCards });
@@ -36,7 +36,7 @@ router.get('/onay-bekleyenler', authenticateToken, requireAdminOrHoca, async (re
 });
 
 // POST /api/kartlar/onayla - Yetkilendirme panelinden kartı kullanıcıya ata
-router.post('/onayla', authenticateToken, requireAdminOrHoca, async (req, res) => {
+router.post('/onayla', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { kartUid, userId } = req.body;
 
@@ -85,7 +85,7 @@ router.get('/son-okutulan', authenticateToken, requireAdminOrHoca, async (req, r
 });
 
 // POST /api/kartlar/reddet - Bekleyen kart yetkilendirme isteğini reddet
-router.post('/reddet', authenticateToken, requireAdminOrHoca, async (req, res) => {
+router.post('/reddet', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { kartUid } = req.body;
         if (!kartUid) {
@@ -95,7 +95,7 @@ router.post('/reddet', authenticateToken, requireAdminOrHoca, async (req, res) =
             });
         }
 
-        const result = await cardApprovalService.rejectCard(kartUid);
+        const result = await cardApprovalService.rejectCard(kartUid, req.user.kullaniciId);
         return res.status(result.success ? 200 : 400).json(result);
     } catch (error) {
         return res.status(500).json({

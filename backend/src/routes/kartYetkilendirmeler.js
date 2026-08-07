@@ -25,7 +25,7 @@ const permissionInclude = {
   birim: true
 };
 
-router.get('/', requireAdminOrHoca, async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   try {
     const permissions = await prisma.kartYetkilendirme.findMany({
       include: permissionInclude,
@@ -38,7 +38,7 @@ router.get('/', requireAdminOrHoca, async (req, res) => {
   }
 });
 
-router.get('/:id', requireAdminOrHoca, async (req, res) => {
+router.get('/:id', requireAdmin, async (req, res) => {
   try {
     const permission = await prisma.kartYetkilendirme.findUnique({
       where: { kartYetkiId: BigInt(req.params.id) },
@@ -51,7 +51,7 @@ router.get('/:id', requireAdminOrHoca, async (req, res) => {
   }
 });
 
-router.post('/', requireAdminOrHoca, async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const { kartUid, kullaniciId } = req.body;
     if (!kartUid || kullaniciId == null) {
@@ -81,7 +81,7 @@ router.post('/', requireAdminOrHoca, async (req, res) => {
   }
 });
 
-router.put('/:id', requireAdminOrHoca, async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const { durum, notlar, sonKullanilmaTarihi } = req.body;
     const permission = await prisma.kartYetkilendirme.update({

@@ -134,6 +134,7 @@ model Kullanici {
   // sifreHash boş olabilir; giriş servisi geçiş süresince pinHash'e geri düşer.
   sifreHash          String?   @db.VarChar(255)
   sifreGecerlilikBitis DateTime? @db.Timestamptz()
+  oturumSurumu       Int       @default(0)
 
   // Kişiye özel PIN (argon2 ile hashlenmiş). Düz PIN veritabanında hiç
   // saklanmaz; pinGecerlilikBitis, üretim anında dönen düz PIN'in ne kadar
@@ -154,6 +155,7 @@ model Kullanici {
   offlineListeUyelikleri OfflineListeUyesi[]
   denetimKayitlari DenetimKaydi[]
   kapiSifreGecmisi KapiSifreGecmisi[]
+  webSifreSifirlamalari WebSifreSifirlama[]
 
   @@map("kullanici")
 }
@@ -172,6 +174,22 @@ model KapiSifreGecmisi {
   @@index([kullaniciId, aktif])
   @@index([kullaniciId, olusturulma])
   @@map("kapi_sifre_gecmisi")
+}
+
+model WebSifreSifirlama {
+  sifirlamaId      BigInt    @id @default(autoincrement())
+  kullaniciId      BigInt
+  kullanici        Kullanici @relation(fields: [kullaniciId], references: [kullaniciId], onDelete: Cascade)
+  tokenHash        String    @unique @db.VarChar(64)
+  gecerlilikBitis  DateTime  @db.Timestamptz()
+  kullanildi       DateTime? @db.Timestamptz()
+  iptal             Boolean   @default(false)
+  talepIp           String?   @db.VarChar(64)
+  olusturulma       DateTime  @default(now()) @db.Timestamptz()
+
+  @@index([kullaniciId, olusturulma])
+  @@index([gecerlilikBitis, iptal])
+  @@map("web_sifre_sifirlama")
 }
 
 // ============================================================

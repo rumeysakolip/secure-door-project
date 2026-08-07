@@ -3,6 +3,7 @@ const argon2 = require('argon2');
 const prisma = require('../config/prisma');
 const { refreshSingleUserPin, generateRandomPin } = require('../services/pinService');
 const { recordPinHistory, listPinHistory } = require('../services/pinHistoryService');
+const { writeAudit } = require('../services/auditService');
 const {
   validateWebPassword,
   generateTemporaryWebPassword
@@ -32,6 +33,16 @@ const safeUserSelect = {
   birim: true
 };
 
+const auditUserSnapshot = (user) => user ? ({
+  kullaniciId: user.kullaniciId?.toString(),
+  ad: user.ad,
+  soyad: user.soyad,
+  eposta: user.eposta,
+  birimId: user.birimId,
+  durum: user.durum,
+  rol: user.rol
+}) : null;
+
 router.get('/ozet', requireAdminOrHoca, async (req, res) => {
   try {
     const [toplam, aktif] = await Promise.all([
@@ -44,7 +55,7 @@ router.get('/ozet', requireAdminOrHoca, async (req, res) => {
   }
 });
 
-router.get('/', requireAdminOrHoca, async (req, res) => {
+router.get('/', requireAdmin, async (req, res) => {
   try {
     const { durum, rol } = req.query;
     const where = {
@@ -119,6 +130,14 @@ router.post('/', requireAdmin, async (req, res) => {
         gecerlilikBitis: pinExpiresAt,
         kaynak: 'yonetici'
       });
+      await writeAudit({
+        client: transaction,
+        actorId: req.user.kullaniciId,
+        action: 'olustur',
+        tableName: 'kullanici',
+        recordId: createdUser.kullaniciId,
+        after: auditUserSnapshot(createdUser)
+      });
       return createdUser;
     });
 
@@ -159,17 +178,29 @@ router.put('/:id', requireAdmin, async (req, res) => {
       return res.status(409).json({ hata: 'Tek yönetici hesabı pasif duruma getirilemez.' });
     }
 
-    const user = await prisma.kullanici.update({
-      where: { kullaniciId: BigInt(req.params.id) },
-      data: {
-        ...(ad !== undefined ? { ad: String(ad).trim() } : {}),
-        ...(soyad !== undefined ? { soyad: String(soyad).trim() } : {}),
-        ...(normalizedEmail !== undefined ? { eposta: normalizedEmail } : {}),
-        ...(birimId !== undefined ? { birimId: birimId != null ? Number.parseInt(birimId, 10) : null } : {}),
-        ...(durum !== undefined ? { durum } : {}),
-        ...(rol !== undefined ? { rol } : {})
-      },
-      select: safeUserSelect
+    const user = await prisma.$transaction(async (transaction) => {
+      const updatedUser = await transaction.kullanici.update({
+        where: { kullaniciId: BigInt(req.params.id) },
+        data: {
+          ...(ad !== undefined ? { ad: String(ad).trim() } : {}),
+          ...(soyad !== undefined ? { soyad: String(soyad).trim() } : {}),
+          ...(normalizedEmail !== undefined ? { eposta: normalizedEmail } : {}),
+          ...(birimId !== undefined ? { birimId: birimId != null ? Number.parseInt(birimId, 10) : null } : {}),
+          ...(durum !== undefined ? { durum } : {}),
+          ...(rol !== undefined ? { rol } : {})
+        },
+        select: safeUserSelect
+      });
+      await writeAudit({
+        client: transaction,
+        actorId: req.user.kullaniciId,
+        action: 'guncelle',
+        tableName: 'kullanici',
+        recordId: updatedUser.kullaniciId,
+        before: auditUserSnapshot(targetUser),
+        after: auditUserSnapshot(updatedUser)
+      });
+      return updatedUser;
     });
     return res.json(user);
   } catch (error) {
@@ -181,24 +212,47 @@ router.put('/:id', requireAdmin, async (req, res) => {
 });
 
 router.delete('/:id', requireAdmin, async (req, res) => {
+  let targetUser;
   try {
-    const targetUser = await prisma.kullanici.findUnique({
+    targetUser = await prisma.kullanici.findUnique({
       where: { kullaniciId: BigInt(req.params.id) }
     });
     if (!targetUser) return res.status(404).json({ hata: 'Kullanıcı bulunamadı' });
     if (targetUser.rol === 'admin') {
       return res.status(409).json({ hata: 'Tek yönetici hesabı silinemez.' });
     }
-    await prisma.kullanici.delete({ where: { kullaniciId: BigInt(req.params.id) } });
+    await prisma.$transaction(async (transaction) => {
+      await writeAudit({
+        client: transaction,
+        actorId: req.user.kullaniciId,
+        action: 'sil',
+        tableName: 'kullanici',
+        recordId: targetUser.kullaniciId,
+        before: auditUserSnapshot(targetUser)
+      });
+      await transaction.kullanici.delete({ where: { kullaniciId: BigInt(req.params.id) } });
+    });
     return res.json({ mesaj: 'Kullanıcı silindi' });
   } catch (error) {
     console.error('Kullanıcı silinirken hata:', error);
     if (error.code === 'P2025') return res.status(404).json({ hata: 'Kullanıcı bulunamadı' });
     if (error.code === 'P2003') {
-      const user = await prisma.kullanici.update({
-        where: { kullaniciId: BigInt(req.params.id) },
-        data: { durum: 'pasif' },
-        select: safeUserSelect
+      const user = await prisma.$transaction(async (transaction) => {
+        const updatedUser = await transaction.kullanici.update({
+          where: { kullaniciId: BigInt(req.params.id) },
+          data: { durum: 'pasif', oturumSurumu: { increment: 1 } },
+          select: safeUserSelect
+        });
+        await writeAudit({
+          client: transaction,
+          actorId: req.user.kullaniciId,
+          action: 'guncelle',
+          tableName: 'kullanici',
+          recordId: updatedUser.kullaniciId,
+          before: { durum: targetUser.durum },
+          after: { durum: 'pasif', sebep: 'bagli_kayitlar_korundu' }
+        });
+        return updatedUser;
       });
       return res.json({
         mesaj: 'Geçmiş kayıtları korumak için kullanıcı hesabı pasif duruma getirildi.',
@@ -213,6 +267,13 @@ router.delete('/:id', requireAdmin, async (req, res) => {
 router.post('/:id/sifre-yenile', requireSelfOrAdmin, async (req, res) => {
   try {
     const result = await refreshSingleUserPin(req.params.id);
+    await writeAudit({
+      actorId: req.user.kullaniciId,
+      action: 'guncelle',
+      tableName: 'kapi_sifre_gecmisi',
+      recordId: req.params.id,
+      after: { pin: 'yenilendi' }
+    });
     return res.json({
       mesaj: 'Kullanıcının PIN değeri yenilendi ve aktif cihazlara bildirildi.',
       veri: result
@@ -230,6 +291,13 @@ router.get('/:id/pin-gecmisi', requireSelfOrAdmin, async (req, res) => {
     });
     if (!user) return res.status(404).json({ hata: 'Kullanıcı bulunamadı' });
     const history = await listPinHistory(user.kullaniciId, req.query.limit);
+    await writeAudit({
+      actorId: req.user.kullaniciId,
+      action: 'guncelle',
+      tableName: 'kapi_sifre_gecmisi',
+      recordId: user.kullaniciId,
+      after: { gecmisGoruntulendi: true, kayitSayisi: history.length }
+    });
     return res.json({
       kullanici: {
         ...user,

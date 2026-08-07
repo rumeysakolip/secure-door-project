@@ -5,10 +5,16 @@ dotenv.config({ path: path.join(__dirname, '../../../.env') });
 const request = require('supertest');
 const app = require('../index');
 const prisma = require('../config/prisma');
+const { getAdminToken } = require('./authTestUtils');
 
 describe('Kapı CRUD Entegrasyon Testleri', () => {
   let olusturulanKapiId;
+  let adminToken;
   const testAd = `Crud Test Kapı ${Date.now()}`;
+
+  beforeAll(async () => { adminToken = await getAdminToken(); });
+  const authorized = (method, url) => request(app)[method](url)
+    .set('Authorization', `Bearer ${adminToken}`);
 
   afterAll(async () => {
     try {
@@ -19,14 +25,13 @@ describe('Kapı CRUD Entegrasyon Testleri', () => {
   });
 
   test('POST /api/kapilar - ad olmadan istek 400 dönmeli', async () => {
-    const res = await request(app).post('/api/kapilar').send({});
+    const res = await authorized('post', '/api/kapilar').send({});
     expect(res.statusCode).toEqual(400);
     expect(res.body).toHaveProperty('hata');
   });
 
   test('POST /api/kapilar - Yeni kapı oluşturulabilmeli', async () => {
-    const res = await request(app)
-      .post('/api/kapilar')
+    const res = await authorized('post', '/api/kapilar')
       .send({
         ad: testAd,
         bina: 'A Blok',
@@ -41,19 +46,18 @@ describe('Kapı CRUD Entegrasyon Testleri', () => {
   });
 
   test('GET /api/kapilar/:id - Oluşturulan kapı getirilebilmeli', async () => {
-    const res = await request(app).get(`/api/kapilar/${olusturulanKapiId}`);
+    const res = await authorized('get', `/api/kapilar/${olusturulanKapiId}`);
     expect(res.statusCode).toEqual(200);
     expect(res.body.ad).toEqual(testAd);
   });
 
   test('GET /api/kapilar/:id - Var olmayan id için 404 dönmeli', async () => {
-    const res = await request(app).get('/api/kapilar/999999999');
+    const res = await authorized('get', '/api/kapilar/999999999');
     expect(res.statusCode).toEqual(404);
   });
 
   test('PUT /api/kapilar/:id - Kapı güncellenebilmeli', async () => {
-    const res = await request(app)
-      .put(`/api/kapilar/${olusturulanKapiId}`)
+    const res = await authorized('put', `/api/kapilar/${olusturulanKapiId}`)
       .send({ durum: 'bakimda' });
 
     expect(res.statusCode).toEqual(200);
@@ -61,14 +65,13 @@ describe('Kapı CRUD Entegrasyon Testleri', () => {
   });
 
   test('PUT /api/kapilar/:id - Var olmayan id için 404 dönmeli', async () => {
-    const res = await request(app)
-      .put('/api/kapilar/999999999')
+    const res = await authorized('put', '/api/kapilar/999999999')
       .send({ durum: 'aktif' });
     expect(res.statusCode).toEqual(404);
   });
 
   test('GET /api/kapilar - Liste dönmeli ve oluşturulan kapıyı içermeli', async () => {
-    const res = await request(app).get('/api/kapilar');
+    const res = await authorized('get', '/api/kapilar');
     expect(res.statusCode).toEqual(200);
     expect(Array.isArray(res.body)).toBe(true);
     const bulunan = res.body.find((k) => k.ad === testAd);
@@ -76,17 +79,17 @@ describe('Kapı CRUD Entegrasyon Testleri', () => {
   });
 
   test('DELETE /api/kapilar/:id - Kapı silinebilmeli', async () => {
-    const res = await request(app).delete(`/api/kapilar/${olusturulanKapiId}`);
+    const res = await authorized('delete', `/api/kapilar/${olusturulanKapiId}`);
     expect(res.statusCode).toEqual(200);
   });
 
   test('GET /api/kapilar/:id - Silinen kapı artık bulunamamalı', async () => {
-    const res = await request(app).get(`/api/kapilar/${olusturulanKapiId}`);
+    const res = await authorized('get', `/api/kapilar/${olusturulanKapiId}`);
     expect(res.statusCode).toEqual(404);
   });
 
   test('DELETE /api/kapilar/:id - Var olmayan id için 404 dönmeli', async () => {
-    const res = await request(app).delete('/api/kapilar/999999999');
+    const res = await authorized('delete', '/api/kapilar/999999999');
     expect(res.statusCode).toEqual(404);
   });
 });

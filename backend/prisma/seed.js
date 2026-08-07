@@ -63,15 +63,15 @@ async function main() {
     create: { kod: 'CENG', ad: 'Bilgisayar Mühendisliği', aktif: true }
   });
 
-  const adminEmail = String(process.env.SEED_ADMIN_EMAIL || 'ahmet@subu.edu.tr').trim().toLowerCase();
+  const adminEmail = String(process.env.SEED_ADMIN_EMAIL || 'admin@securelab.local').trim().toLowerCase();
   const admin = await ensureUser({
-    ad: 'Ahmet',
-    soyad: 'Yılmaz',
+    ad: 'SecureLab',
+    soyad: 'Yöneticisi',
     eposta: adminEmail,
     rol: 'admin',
     birimId: birim.birimId,
-    password: process.env.SEED_ADMIN_PASSWORD || '123456',
-    pin: process.env.SEED_ADMIN_PIN || '654321'
+    password: process.env.SEED_ADMIN_PASSWORD || 'SecureLab2026!',
+    pin: process.env.SEED_ADMIN_PIN || '864209'
   });
 
   await prisma.kullanici.updateMany({
