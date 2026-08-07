@@ -1,11 +1,13 @@
 const argon2 = require('argon2');
 const prisma = require('../src/config/prisma');
+const { recordPinHistory } = require('../src/services/pinHistoryService');
 
-async function ensureUser({ ad, soyad, eposta, rol, birimId, password }) {
+async function ensureUser({ ad, soyad, eposta, rol, birimId, password, pin }) {
   const existing = await prisma.kullanici.findFirst({
     where: { eposta: { equals: eposta, mode: 'insensitive' } }
   });
   const passwordHash = await argon2.hash(password);
+  const pinHash = await argon2.hash(pin);
 
   if (existing) {
     return prisma.kullanici.update({
@@ -17,24 +19,40 @@ async function ensureUser({ ad, soyad, eposta, rol, birimId, password }) {
         rol,
         birimId,
         durum: 'aktif',
-        ...(existing.sifreHash ? {} : { sifreHash: existing.pinHash || passwordHash }),
-        ...(existing.pinHash ? {} : { pinHash: passwordHash })
+        ...(existing.sifreHash ? {} : { sifreHash: passwordHash }),
+        ...(existing.pinHash ? {} : {
+          pinHash,
+          pinSonDegisim: new Date(),
+          pinGecerlilikBitis: new Date(Date.now() + 24 * 60 * 60 * 1000)
+        })
       }
     });
   }
 
-  return prisma.kullanici.create({
-    data: {
-      ad,
-      soyad,
-      eposta,
-      rol,
-      birimId,
-      durum: 'aktif',
-      sifreHash: passwordHash,
-      pinHash: passwordHash,
-      pinSonDegisim: new Date()
-    }
+  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  return prisma.$transaction(async (transaction) => {
+    const user = await transaction.kullanici.create({
+      data: {
+        ad,
+        soyad,
+        eposta,
+        rol,
+        birimId,
+        durum: 'aktif',
+        sifreHash: passwordHash,
+        pinHash,
+        pinSonDegisim: new Date(),
+        pinGecerlilikBitis: expiresAt
+      }
+    });
+    await recordPinHistory(transaction, {
+      kullaniciId: user.kullaniciId,
+      pin,
+      pinHash,
+      gecerlilikBitis: expiresAt,
+      kaynak: 'baslangic'
+    });
+    return user;
   });
 }
 
@@ -45,13 +63,23 @@ async function main() {
     create: { kod: 'CENG', ad: 'Bilgisayar Mühendisliği', aktif: true }
   });
 
-  await ensureUser({
+  const adminEmail = String(process.env.SEED_ADMIN_EMAIL || 'ahmet@subu.edu.tr').trim().toLowerCase();
+  const admin = await ensureUser({
     ad: 'Ahmet',
     soyad: 'Yılmaz',
-    eposta: 'ahmet@subu.edu.tr',
+    eposta: adminEmail,
     rol: 'admin',
     birimId: birim.birimId,
-    password: process.env.SEED_ADMIN_PASSWORD || '123456'
+    password: process.env.SEED_ADMIN_PASSWORD || '123456',
+    pin: process.env.SEED_ADMIN_PIN || '654321'
+  });
+
+  await prisma.kullanici.updateMany({
+    where: {
+      rol: 'admin',
+      NOT: { kullaniciId: admin.kullaniciId }
+    },
+    data: { rol: 'hoca' }
   });
 
   const kapi = await prisma.kapi.findFirst({ where: { ad: 'Laboratuvar Kapısı' } })
@@ -94,7 +122,7 @@ async function main() {
   }
 
   console.log('Canlı başlangıç verileri hazır.');
-  console.log('Yönetici: ahmet@subu.edu.tr');
+  console.log(`Yönetici: ${adminEmail}`);
 }
 
 main()

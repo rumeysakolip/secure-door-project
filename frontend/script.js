@@ -35,6 +35,15 @@ const TABLE_FILTER_CONFIG = Object.freeze({
             { key: 'status', label: 'Sonuç', column: 4 }
         ]
     },
+    'admin-users-table': {
+        searchPlaceholder: 'Ad, e-posta veya hesap durumu ara',
+        hasDate: false,
+        pageSize: 10,
+        filters: [
+            { key: 'role', label: 'Rol', column: 2 },
+            { key: 'status', label: 'Hesap durumu', column: 3 }
+        ]
+    },
     'history-access-table': {
         searchPlaceholder: 'Kullanıcı, kart UID veya kapı ara',
         hasDate: true,
@@ -1121,10 +1130,12 @@ function normalizeNavigation() {
     const links = navigation.querySelector('.nav-links') || createElement('div', 'nav-links');
     const items = [
         { label: 'Ana Sayfa', href: 'index.html', pages: ['dashboard'], path: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z' },
+        { label: 'Admin', href: 'admin.html', pages: ['admin'], path: 'M12 3v18M3 12h18', admin: true },
         { label: 'Geçici Şifre', href: 'gecici-sifre.html', pages: ['temporary-pin'], path: 'M7.5 10a5.5 5.5 0 1 0 5.5 5.5M12 11l8-8M15 6l3 3' },
         { label: 'Giriş Geçmişi', href: 'gecmis-girisler.html', pages: ['access-history'], path: 'M3 12a9 9 0 1 0 3-6.7L3 8V3m9 4v5l3 2' },
         { label: 'Yetkilendirme', href: 'yetkilendirme.html', pages: ['authorization'], path: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 0 2 2 4-4' },
         { label: 'Arıza Geçmişi', href: 'ariza-gecmisi.html', pages: ['issue-history'], path: 'M14.7 6.3a4 4 0 0 0-5-5L7 4l3 3 2.7-2.7a4 4 0 0 0 2 2ZM5 8l-3 3 10 10 3-3' },
+        { label: 'Hesabım', href: 'hesabim.html', pages: ['account'], path: 'M16 21v-2a4 4 0 0 0-8 0v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z' },
         { label: 'Çıkış Yap', href: 'login.html', pages: [], path: 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9', logout: true }
     ];
     links.replaceChildren(...items.map((item) => createSidebarLink(item, currentPage)));
@@ -1256,7 +1267,7 @@ async function requireAuthentication() {
 
 function getRoleDestination(role) {
     const destinations = {
-        admin: 'index.html',
+        admin: 'admin.html',
         hoca: 'index.html',
         sistem: 'index.html'
     };
@@ -1333,8 +1344,8 @@ async function initLogin() {
             });
             setInlineMessage(
                 message,
-                response?.temporaryPin
-                    ? `Yeni giriş şifreniz: ${response.temporaryPin}`
+                response?.temporaryPassword
+                    ? `Geçici web giriş şifreniz: ${response.temporaryPassword}`
                     : (response?.message || 'Sıfırlama isteği alındı.'),
                 'success'
             );
@@ -1397,6 +1408,130 @@ async function getKullaniciOzeti() {
     return apiRequest('/api/kullanicilar/ozet');
 }
 
+async function createKullanici(payload) {
+    return apiRequest('/api/kullanicilar', {
+        method: 'POST',
+        body: payload
+    });
+}
+
+async function deleteKullanici(kullaniciId) {
+    return apiRequest(`/api/kullanicilar/${encodeURIComponent(kullaniciId)}`, {
+        method: 'DELETE'
+    });
+}
+
+async function getKapiSifreGecmisi(kullaniciId) {
+    return apiRequest(`/api/kullanicilar/${encodeURIComponent(kullaniciId)}/pin-gecmisi`);
+}
+
+async function changeOwnWebPassword(payload) {
+    return apiRequest('/api/auth/change-password', {
+        method: 'POST',
+        body: payload
+    });
+}
+
+function renderPinHistoryTable(tableId, payload) {
+    const table = document.getElementById(tableId);
+    const tableBody = table?.querySelector('tbody');
+    if (!tableBody) return;
+    const records = Array.isArray(payload?.kayitlar) ? payload.kayitlar : [];
+    if (!records.length) {
+        showEmpty(tableBody, 'Bu kullanıcı için henüz kaydedilmiş bir kapı şifresi bulunmuyor.');
+        return;
+    }
+
+    const includeSource = tableId === 'account-pin-history-table';
+    const fragment = document.createDocumentFragment();
+    records.forEach((record) => {
+        const row = document.createElement('tr');
+        const pinCell = document.createElement('td');
+        pinCell.appendChild(createElement('code', 'pin-history-code', record.pin || '••••••'));
+        if (record.gizli) {
+            pinCell.appendChild(createElement('span', 'cell-secondary', 'Geçiş öncesi güvenli kayıt'));
+        }
+        const statusCell = document.createElement('td');
+        statusCell.appendChild(createBadge(record.durum || (record.aktif ? 'Güncel' : 'Geçmiş'), record.aktif ? 'success' : 'neutral'));
+        const createdCell = createElement('td', 'cell-secondary', formatDateTime(record.olusturulma));
+        const expiresCell = createElement(
+            'td',
+            'cell-secondary',
+            record.gecerlilikBitis ? formatDateTime(record.gecerlilikBitis) : 'Süresiz'
+        );
+        row.append(pinCell, statusCell, createdCell, expiresCell);
+        if (includeSource) {
+            const sourceLabels = {
+                manuel: 'Kullanıcı yenilemesi',
+                otomatik: 'Günlük otomatik',
+                yonetici: 'Yönetici oluşturması',
+                baslangic: 'Başlangıç kaydı',
+                eski_kayit: 'Geçiş öncesi kayıt'
+            };
+            row.appendChild(createElement('td', 'cell-secondary', sourceLabels[record.kaynak] || record.kaynak || 'Sistem'));
+        }
+        fragment.appendChild(row);
+    });
+    tableBody.replaceChildren(fragment);
+}
+
+function renderAdminUsers() {
+    const tableBody = document.querySelector('#admin-users-table tbody');
+    if (!tableBody) return;
+    const users = appState.kullanicilar;
+    setText('admin-users-count', `${users.length} kullanıcı`);
+    if (!users.length) {
+        showEmpty(tableBody, 'Henüz kayıtlı kullanıcı bulunmuyor.');
+        return;
+    }
+
+    const sortedUsers = [...users].sort((left, right) => {
+        if (left.rol === 'admin') return -1;
+        if (right.rol === 'admin') return 1;
+        return `${left.ad} ${left.soyad}`.localeCompare(`${right.ad} ${right.soyad}`, 'tr');
+    });
+    const fragment = document.createDocumentFragment();
+    sortedUsers.forEach((user) => {
+        const row = document.createElement('tr');
+        const userName = `${user.ad || ''} ${user.soyad || ''}`.trim() || 'İsimsiz kullanıcı';
+        row.dataset.role = humanizeEnum(user.rol);
+        row.dataset.status = humanizeEnum(user.durum);
+        row.dataset.searchText = `${userName} ${user.eposta || ''} ${row.dataset.role} ${row.dataset.status}`;
+
+        const nameCell = document.createElement('td');
+        nameCell.append(
+            createElement('strong', 'cell-primary', userName),
+            createElement('span', 'cell-secondary', user.rol === 'admin' ? 'Tek yönetici hesabı' : 'Standart kullanıcı')
+        );
+        const emailCell = createElement('td', 'cell-secondary', user.eposta || 'E-posta tanımlı değil');
+        const roleCell = document.createElement('td');
+        roleCell.appendChild(createBadge(humanizeEnum(user.rol), user.rol === 'admin' ? 'warning' : 'info'));
+        const statusCell = document.createElement('td');
+        statusCell.appendChild(createBadge(humanizeEnum(user.durum), user.durum === 'aktif' ? 'success' : 'danger'));
+        const pinCell = document.createElement('td');
+        const historyButton = createElement('button', 'btn-secondary btn-sm', 'Şifreleri Gör');
+        historyButton.type = 'button';
+        historyButton.dataset.userHistory = String(user.kullaniciId);
+        historyButton.dataset.userName = userName;
+        pinCell.appendChild(historyButton);
+
+        const actionCell = document.createElement('td');
+        if (user.rol === 'admin') {
+            actionCell.appendChild(createElement('span', 'badge badge-neutral', 'Korunan hesap'));
+        } else {
+            const deleteButton = createElement('button', 'btn-danger btn-sm', 'Kullanıcıyı Sil');
+            deleteButton.type = 'button';
+            deleteButton.dataset.userDelete = String(user.kullaniciId);
+            deleteButton.dataset.userName = userName;
+            actionCell.appendChild(deleteButton);
+        }
+        row.append(nameCell, emailCell, roleCell, statusCell, pinCell, actionCell);
+        fragment.appendChild(row);
+    });
+    tableBody.replaceChildren(fragment);
+    refreshTableFilter('admin-users-table');
+}
+
 function renderKullanicilar(data) {
     appState.kullanicilar = Array.isArray(data) ? data : [];
     setText('admin-user-count', String(appState.kullanicilar.length));
@@ -1404,6 +1539,7 @@ function renderKullanicilar(data) {
     setText('auth-user-count-badge', `${appState.kullanicilar.length} tanımlı kullanıcı`);
     setText('authorization-user-count', String(appState.kullanicilar.length));
     setText('admin-user-detail', `${appState.kullanicilar.length} kullanıcı backend’den alındı`);
+    renderAdminUsers();
 
     const select = document.getElementById('auth-full-name');
     if (!select) return;
@@ -1842,6 +1978,149 @@ function renderAdminLastAccess(data) {
         : 'Kayıt yok');
 }
 
+async function loadAdminPinHistory(kullaniciId, userName) {
+    const tableBody = document.querySelector('#admin-pin-history-table tbody');
+    const label = document.getElementById('admin-pin-history-user');
+    if (!tableBody) return;
+    showLoading(tableBody);
+    setText('admin-pin-history-user', `${userName} için kayıtlar yükleniyor`);
+    try {
+        const history = await getKapiSifreGecmisi(kullaniciId);
+        renderPinHistoryTable('admin-pin-history-table', history);
+        setText('admin-pin-history-user', `${userName} · ${history.kayitlar?.length || 0} kayıt`);
+    } catch (error) {
+        showError(tableBody, handleApiError(error));
+        setText('admin-pin-history-user', 'Şifre geçmişi alınamadı');
+    }
+    label?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
+}
+
+function initAdminUserManagement() {
+    const form = document.getElementById('admin-user-form');
+    const formMessage = document.getElementById('admin-user-form-message');
+    const submitButton = document.getElementById('admin-user-submit');
+    const tableBody = document.querySelector('#admin-users-table tbody');
+
+    form?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = new FormData(form);
+        const payload = {
+            ad: String(formData.get('ad') || '').trim(),
+            soyad: String(formData.get('soyad') || '').trim(),
+            eposta: String(formData.get('eposta') || '').trim(),
+            webPassword: String(formData.get('webPassword') || ''),
+            pin: String(formData.get('pin') || '')
+        };
+        if (!payload.webPassword) delete payload.webPassword;
+        if (!payload.pin) delete payload.pin;
+
+        setButtonLoading(submitButton, true, 'Kullanıcı oluşturuluyor…');
+        setInlineMessage(formMessage, 'Kullanıcı hesabı güvenli biçimde oluşturuluyor…', 'info');
+        try {
+            const created = await createKullanici(payload);
+            setText('generated-user-email', created.eposta || payload.eposta);
+            setText('generated-user-password', created.initialPassword || '—');
+            setText('generated-user-pin', created.initialPin || '—');
+            const credentials = document.getElementById('admin-generated-credentials');
+            if (credentials) credentials.hidden = false;
+            form.reset();
+            renderKullanicilar(await getKullanicilar());
+            setInlineMessage(formMessage, 'Kullanıcı oluşturuldu. İlk giriş bilgilerini kullanıcıya güvenli biçimde iletin.', 'success');
+            showToast('Yeni kullanıcı hesabı oluşturuldu.', 'success');
+            await loadAdminPinHistory(created.kullaniciId, `${created.ad} ${created.soyad}`);
+        } catch (error) {
+            setInlineMessage(formMessage, handleApiError(error), 'error');
+            showToast(handleApiError(error), 'error');
+        } finally {
+            setButtonLoading(submitButton, false);
+        }
+    });
+
+    tableBody?.addEventListener('click', async (event) => {
+        const historyButton = event.target.closest('[data-user-history]');
+        if (historyButton) {
+            await loadAdminPinHistory(historyButton.dataset.userHistory, historyButton.dataset.userName || 'Kullanıcı');
+            return;
+        }
+
+        const deleteButton = event.target.closest('[data-user-delete]');
+        if (!deleteButton) return;
+        const confirmed = await openModal({
+            title: 'Kullanıcı hesabını sil',
+            message: `${deleteButton.dataset.userName || 'Bu kullanıcı'} sistemden kaldırılacak.`,
+            detail: 'Kullanıcıya bağlı geçmiş kayıtlar varsa hesap silinmek yerine pasif duruma alınır.',
+            confirmText: 'Kullanıcıyı Sil',
+            variant: 'danger'
+        });
+        if (!confirmed) return;
+
+        deleteButton.disabled = true;
+        setInlineMessage(formMessage, 'Kullanıcı hesabı kaldırılıyor…', 'info');
+        try {
+            const response = await deleteKullanici(deleteButton.dataset.userDelete);
+            renderKullanicilar(await getKullanicilar());
+            setInlineMessage(formMessage, response?.mesaj || 'Kullanıcı hesabı kaldırıldı.', 'success');
+            showToast(response?.mesaj || 'Kullanıcı hesabı kaldırıldı.', 'success');
+        } catch (error) {
+            deleteButton.disabled = false;
+            setInlineMessage(formMessage, handleApiError(error), 'error');
+            showToast(handleApiError(error), 'error');
+        }
+    });
+}
+
+async function initAccountPage() {
+    const user = appState.currentUser || await getCurrentUser();
+    setText('account-full-name', `${user.ad || ''} ${user.soyad || ''}`.trim() || '—');
+    setText('account-email', user.eposta || 'E-posta tanımlı değil');
+    setText('account-status', humanizeEnum(user.durum));
+    setText('account-role-badge', humanizeEnum(user.rol));
+    setText('account-system-state', 'Hesap bilgileri güncel');
+
+    const pinTableBody = document.querySelector('#account-pin-history-table tbody');
+    const pinMessage = document.getElementById('account-pin-message');
+    showLoading(pinTableBody);
+    try {
+        const history = await getKapiSifreGecmisi(user.kullaniciId);
+        renderPinHistoryTable('account-pin-history-table', history);
+        setInlineMessage(pinMessage);
+    } catch (error) {
+        showError(pinTableBody, handleApiError(error));
+        setInlineMessage(pinMessage, handleApiError(error), 'error');
+    }
+
+    const form = document.getElementById('account-password-form');
+    const message = document.getElementById('account-password-message');
+    const submitButton = document.getElementById('account-password-submit');
+    form?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formData = new FormData(form);
+        const payload = {
+            mevcutSifre: String(formData.get('mevcutSifre') || ''),
+            yeniSifre: String(formData.get('yeniSifre') || ''),
+            yeniSifreTekrar: String(formData.get('yeniSifreTekrar') || '')
+        };
+        if (payload.yeniSifre !== payload.yeniSifreTekrar) {
+            setInlineMessage(message, 'Yeni şifre ile şifre tekrarı eşleşmiyor.', 'error');
+            return;
+        }
+
+        setButtonLoading(submitButton, true, 'Şifre güncelleniyor…');
+        setInlineMessage(message, 'Web arayüzü şifreniz güncelleniyor…', 'info');
+        try {
+            const response = await changeOwnWebPassword(payload);
+            form.reset();
+            setInlineMessage(message, response?.message || 'Web şifreniz güncellendi.', 'success');
+            showToast('Web şifreniz başarıyla değiştirildi.', 'success');
+        } catch (error) {
+            setInlineMessage(message, handleApiError(error), 'error');
+            showToast(handleApiError(error), 'error');
+        } finally {
+            setButtonLoading(submitButton, false);
+        }
+    });
+}
+
 async function initAdminPage() {
     const tableBody = document.querySelector('#admin-access-table tbody');
     const status = document.getElementById('admin-api-status');
@@ -1879,6 +2158,8 @@ async function initAdminPage() {
         setText('admin-system-state', 'Sistem verileri güncel');
         setText('admin-infra-state', 'Canlı API');
     }
+
+    initAdminUserManagement();
 
     const remoteDoorButton = document.getElementById('remote-door-button');
     if (remoteDoorButton) {
@@ -2474,6 +2755,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const initializers = {
         admin: initAdminPage,
         dashboard: initDashboardPage,
+        account: initAccountPage,
         authorization: initAuthorizationPage,
         'temporary-pin': initTemporaryPinPage,
         'access-history': initAccessHistoryPage,

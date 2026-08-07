@@ -1,0 +1,98 @@
+const crypto = require('crypto');
+const prisma = require('../config/prisma');
+
+const PIN_FORMAT_VERSION = 'v1';
+
+function getEncryptionKey() {
+  const secret = process.env.PIN_HISTORY_ENCRYPTION_KEY
+    || process.env.JWT_SECRET
+    || 'securelab-development-pin-history-key';
+  return crypto.createHash('sha256').update(secret).digest();
+}
+
+function encryptPin(pin) {
+  const value = String(pin || '');
+  if (!/^\d{6}$/.test(value)) throw new Error('Kapı PIN değeri 6 haneli olmalıdır.');
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', getEncryptionKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return [
+    PIN_FORMAT_VERSION,
+    iv.toString('base64url'),
+    tag.toString('base64url'),
+    encrypted.toString('base64url')
+  ].join('.');
+}
+
+function decryptPin(payload) {
+  const [version, ivValue, tagValue, encryptedValue] = String(payload || '').split('.');
+  if (version !== PIN_FORMAT_VERSION || !ivValue || !tagValue || !encryptedValue) {
+    throw new Error('Kapı PIN geçmişi çözümlenemedi.');
+  }
+  const decipher = crypto.createDecipheriv(
+    'aes-256-gcm',
+    getEncryptionKey(),
+    Buffer.from(ivValue, 'base64url')
+  );
+  decipher.setAuthTag(Buffer.from(tagValue, 'base64url'));
+  return Buffer.concat([
+    decipher.update(Buffer.from(encryptedValue, 'base64url')),
+    decipher.final()
+  ]).toString('utf8');
+}
+
+async function recordPinHistory(client, { kullaniciId, pin, pinHash, gecerlilikBitis, kaynak }) {
+  const userId = BigInt(kullaniciId);
+  const now = new Date();
+  await client.kapiSifreGecmisi.updateMany({
+    where: { kullaniciId: userId, aktif: true },
+    data: { aktif: false }
+  });
+  return client.kapiSifreGecmisi.create({
+    data: {
+      kullaniciId: userId,
+      pinSifreli: encryptPin(pin),
+      pinHash: pinHash || null,
+      kaynak: String(kaynak || 'kullanici').slice(0, 32),
+      aktif: true,
+      olusturulma: now,
+      gecerlilikBitis: gecerlilikBitis || null
+    }
+  });
+}
+
+async function listPinHistory(kullaniciId, limit = 50) {
+  const records = await prisma.kapiSifreGecmisi.findMany({
+    where: { kullaniciId: BigInt(kullaniciId) },
+    orderBy: { olusturulma: 'desc' },
+    take: Math.min(Math.max(Number(limit) || 50, 1), 100)
+  });
+  const now = Date.now();
+  return records.map((record) => {
+    let pin = null;
+    try {
+      pin = decryptPin(record.pinSifreli);
+    } catch (error) {
+      pin = null;
+    }
+    const expired = Boolean(record.gecerlilikBitis && record.gecerlilikBitis.getTime() <= now);
+    return {
+      kapiSifreId: record.kapiSifreId.toString(),
+      pin,
+      gizli: !pin,
+      kaynak: record.kaynak,
+      aktif: record.aktif && !expired,
+      durum: record.aktif && !expired ? 'Güncel' : (expired ? 'Süresi doldu' : 'Geçmiş'),
+      olusturulma: record.olusturulma,
+      gecerlilikBitis: record.gecerlilikBitis
+    };
+  });
+}
+
+module.exports = {
+  encryptPin,
+  decryptPin,
+  recordPinHistory,
+  listPinHistory
+};

@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const prisma = require('../config/prisma');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'securelab-development-only-secret';
 
@@ -21,32 +22,50 @@ const authenticateToken = (req, res, next) => {
 };
 
 // 2. Admin Yetkisi Kontrolü Middleware
-const requireAdmin = (req, res, next) => {
-  if (req.user && req.user.rol === 'admin') {
-    next();
-  } else {
+const requireAdmin = async (req, res, next) => {
+  try {
+    const user = await prisma.kullanici.findUnique({
+      where: { kullaniciId: BigInt(req.user?.kullaniciId || 0) },
+      select: { rol: true, durum: true }
+    });
+    if (user?.rol === 'admin' && user.durum === 'aktif') return next();
     return res.status(403).json({ message: 'Bu işlem için yetkiniz yok (Admin rolü gerekli).' });
+  } catch (error) {
+    return res.status(403).json({ message: 'Yönetici yetkisi doğrulanamadı.' });
   }
 };
 
 // 3. Admin veya Hoca Yetkisi Kontrolü Middleware (Web paneli işlemleri için)
-const requireAdminOrHoca = (req, res, next) => {
-  if (req.user && (req.user.rol === 'admin' || req.user.rol === 'hoca')) {
-    next();
-  } else {
+const requireAdminOrHoca = async (req, res, next) => {
+  try {
+    const user = await prisma.kullanici.findUnique({
+      where: { kullaniciId: BigInt(req.user?.kullaniciId || 0) },
+      select: { rol: true, durum: true }
+    });
+    if (user?.durum === 'aktif' && (user.rol === 'admin' || user.rol === 'hoca')) return next();
     return res.status(403).json({ message: 'Bu işlem için yetkiniz yok.' });
+  } catch (error) {
+    return res.status(403).json({ message: 'Kullanıcı yetkisi doğrulanamadı.' });
   }
 };
 
-const requireSelfOrAdmin = (req, res, next) => {
+const requireSelfOrAdmin = async (req, res, next) => {
   const requestedUserId = String(req.params.id || req.params.kullaniciId || '');
   const authenticatedUserId = String(req.user?.kullaniciId || '');
 
-  if (req.user?.rol === 'admin' || (authenticatedUserId && authenticatedUserId === requestedUserId)) {
-    return next();
+  try {
+    const user = await prisma.kullanici.findUnique({
+      where: { kullaniciId: BigInt(authenticatedUserId || 0) },
+      select: { rol: true, durum: true }
+    });
+    if (user?.durum === 'aktif'
+      && (user.rol === 'admin' || (authenticatedUserId && authenticatedUserId === requestedUserId))) {
+      return next();
+    }
+    return res.status(403).json({ message: 'Yalnızca kendi hesabınız üzerinde işlem yapabilirsiniz.' });
+  } catch (error) {
+    return res.status(403).json({ message: 'Kullanıcı yetkisi doğrulanamadı.' });
   }
-
-  return res.status(403).json({ message: 'Yalnızca kendi hesabınız üzerinde işlem yapabilirsiniz.' });
 };
 
 module.exports = {

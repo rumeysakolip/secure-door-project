@@ -2,6 +2,11 @@ const express = require('express');
 const argon2 = require('argon2');
 const prisma = require('../config/prisma');
 const { refreshSingleUserPin, generateRandomPin } = require('../services/pinService');
+const { recordPinHistory, listPinHistory } = require('../services/pinHistoryService');
+const {
+  validateWebPassword,
+  generateTemporaryWebPassword
+} = require('../services/webPasswordService');
 const {
   authenticateToken,
   requireAdmin,
@@ -60,7 +65,7 @@ router.get('/', requireAdminOrHoca, async (req, res) => {
 
 router.post('/', requireAdmin, async (req, res) => {
   try {
-    const { ad, soyad, eposta, birimId, durum, rol, pin } = req.body;
+    const { ad, soyad, eposta, birimId, durum, rol, pin, webPassword } = req.body;
     if (!String(ad || '').trim() || !String(soyad || '').trim()) {
       return res.status(400).json({ hata: "'ad' ve 'soyad' alanları zorunludur" });
     }
@@ -73,28 +78,51 @@ router.post('/', requireAdmin, async (req, res) => {
       if (existing) return res.status(409).json({ hata: 'Bu e-posta adresi zaten kullanılıyor.' });
     }
 
+    if (rol && rol !== 'hoca') {
+      return res.status(400).json({ hata: 'Yeni kullanıcılar standart kullanıcı rolüyle oluşturulur.' });
+    }
+
     const initialPin = String(pin || generateRandomPin());
     if (!/^\d{6}$/.test(initialPin)) {
       return res.status(400).json({ hata: 'Başlangıç PIN değeri 6 haneli olmalıdır.' });
     }
 
-    const initialHash = await argon2.hash(initialPin);
-    const user = await prisma.kullanici.create({
-      data: {
-        ad: String(ad).trim(),
-        soyad: String(soyad).trim(),
-        eposta: normalizedEmail,
-        birimId: birimId != null ? Number.parseInt(birimId, 10) : null,
-        sifreHash: initialHash,
-        pinHash: initialHash,
-        pinSonDegisim: new Date(),
-        ...(durum ? { durum } : {}),
-        ...(rol ? { rol } : {})
-      },
-      select: safeUserSelect
+    const initialPassword = String(webPassword || generateTemporaryWebPassword());
+    const passwordValidation = validateWebPassword(initialPassword);
+    if (!passwordValidation.valid) {
+      return res.status(400).json({ hata: passwordValidation.message });
+    }
+
+    const pinExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const passwordHash = await argon2.hash(initialPassword);
+    const pinHash = await argon2.hash(initialPin);
+    const user = await prisma.$transaction(async (transaction) => {
+      const createdUser = await transaction.kullanici.create({
+        data: {
+          ad: String(ad).trim(),
+          soyad: String(soyad).trim(),
+          eposta: normalizedEmail,
+          birimId: birimId != null ? Number.parseInt(birimId, 10) : null,
+          sifreHash: passwordHash,
+          pinHash,
+          pinSonDegisim: new Date(),
+          pinGecerlilikBitis: pinExpiresAt,
+          durum: durum || 'aktif',
+          rol: 'hoca'
+        },
+        select: safeUserSelect
+      });
+      await recordPinHistory(transaction, {
+        kullaniciId: createdUser.kullaniciId,
+        pin: initialPin,
+        pinHash,
+        gecerlilikBitis: pinExpiresAt,
+        kaynak: 'yonetici'
+      });
+      return createdUser;
     });
 
-    return res.status(201).json({ ...user, initialPin });
+    return res.status(201).json({ ...user, initialPin, initialPassword });
   } catch (error) {
     console.error('Kullanıcı oluşturulurken hata:', error);
     if (error.code === 'P2003') return res.status(400).json({ hata: 'Geçersiz birimId.' });
@@ -117,6 +145,18 @@ router.put('/:id', requireAdmin, async (req, res) => {
         }
       });
       if (existing) return res.status(409).json({ hata: 'Bu e-posta adresi zaten kullanılıyor.' });
+    }
+
+    const targetUser = await prisma.kullanici.findUnique({
+      where: { kullaniciId: BigInt(req.params.id) }
+    });
+    if (!targetUser) return res.status(404).json({ hata: 'Kullanıcı bulunamadı' });
+    if ((targetUser.rol === 'admin' && (rol && rol !== 'admin'))
+      || (targetUser.rol !== 'admin' && rol === 'admin')) {
+      return res.status(409).json({ hata: 'Sistemde yalnızca bir yönetici hesabı bulunabilir.' });
+    }
+    if (targetUser.rol === 'admin' && durum && durum !== 'aktif') {
+      return res.status(409).json({ hata: 'Tek yönetici hesabı pasif duruma getirilemez.' });
     }
 
     const user = await prisma.kullanici.update({
@@ -142,13 +182,29 @@ router.put('/:id', requireAdmin, async (req, res) => {
 
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
+    const targetUser = await prisma.kullanici.findUnique({
+      where: { kullaniciId: BigInt(req.params.id) }
+    });
+    if (!targetUser) return res.status(404).json({ hata: 'Kullanıcı bulunamadı' });
+    if (targetUser.rol === 'admin') {
+      return res.status(409).json({ hata: 'Tek yönetici hesabı silinemez.' });
+    }
     await prisma.kullanici.delete({ where: { kullaniciId: BigInt(req.params.id) } });
     return res.json({ mesaj: 'Kullanıcı silindi' });
   } catch (error) {
     console.error('Kullanıcı silinirken hata:', error);
     if (error.code === 'P2025') return res.status(404).json({ hata: 'Kullanıcı bulunamadı' });
     if (error.code === 'P2003') {
-      return res.status(409).json({ hata: "Bağlı kayıtları bulunan kullanıcı silinemez; durumunu 'pasif' yapın." });
+      const user = await prisma.kullanici.update({
+        where: { kullaniciId: BigInt(req.params.id) },
+        data: { durum: 'pasif' },
+        select: safeUserSelect
+      });
+      return res.json({
+        mesaj: 'Geçmiş kayıtları korumak için kullanıcı hesabı pasif duruma getirildi.',
+        pasifeAlindi: true,
+        kullanici: user
+      });
     }
     return res.status(500).json({ hata: 'Sunucu hatası' });
   }
@@ -163,6 +219,27 @@ router.post('/:id/sifre-yenile', requireSelfOrAdmin, async (req, res) => {
     });
   } catch (error) {
     return res.status(400).json({ hata: error.message });
+  }
+});
+
+router.get('/:id/pin-gecmisi', requireSelfOrAdmin, async (req, res) => {
+  try {
+    const user = await prisma.kullanici.findUnique({
+      where: { kullaniciId: BigInt(req.params.id) },
+      select: { kullaniciId: true, ad: true, soyad: true, eposta: true }
+    });
+    if (!user) return res.status(404).json({ hata: 'Kullanıcı bulunamadı' });
+    const history = await listPinHistory(user.kullaniciId, req.query.limit);
+    return res.json({
+      kullanici: {
+        ...user,
+        kullaniciId: user.kullaniciId.toString()
+      },
+      kayitlar: history
+    });
+  } catch (error) {
+    console.error('Kapı şifresi geçmişi alınırken hata:', error);
+    return res.status(500).json({ hata: 'Kapı şifresi geçmişi alınamadı.' });
   }
 });
 

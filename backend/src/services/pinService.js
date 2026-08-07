@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const argon2 = require('argon2');
 const prisma = require('../config/prisma');
 const mqttService = require('./mqttService');
+const { recordPinHistory } = require('./pinHistoryService');
 
 function generateRandomPin() {
   return crypto.randomInt(100000, 1000000).toString();
@@ -132,13 +133,23 @@ async function refreshAllUsersPins() {
   for (const user of users) {
     const pin = generateRandomPin();
     rawPinsByUserId.set(user.kullaniciId.toString(), pin);
-    await prisma.kullanici.update({
-      where: { kullaniciId: user.kullaniciId },
-      data: {
-        pinHash: await argon2.hash(pin),
-        pinSonDegisim: new Date(),
-        pinGecerlilikBitis: expiresAt
-      }
+    const pinHash = await argon2.hash(pin);
+    await prisma.$transaction(async (transaction) => {
+      await transaction.kullanici.update({
+        where: { kullaniciId: user.kullaniciId },
+        data: {
+          pinHash,
+          pinSonDegisim: new Date(),
+          pinGecerlilikBitis: expiresAt
+        }
+      });
+      await recordPinHistory(transaction, {
+        kullaniciId: user.kullaniciId,
+        pin,
+        pinHash,
+        gecerlilikBitis: expiresAt,
+        kaynak: 'otomatik'
+      });
     });
   }
 
@@ -159,13 +170,23 @@ async function refreshSingleUserPin(kullaniciId) {
 
   const newPin = generateRandomPin();
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  await prisma.kullanici.update({
-    where: { kullaniciId: userId },
-    data: {
-      pinHash: await argon2.hash(newPin),
-      pinSonDegisim: new Date(),
-      pinGecerlilikBitis: expiresAt
-    }
+  const pinHash = await argon2.hash(newPin);
+  await prisma.$transaction(async (transaction) => {
+    await transaction.kullanici.update({
+      where: { kullaniciId: userId },
+      data: {
+        pinHash,
+        pinSonDegisim: new Date(),
+        pinGecerlilikBitis: expiresAt
+      }
+    });
+    await recordPinHistory(transaction, {
+      kullaniciId: userId,
+      pin: newPin,
+      pinHash,
+      gecerlilikBitis: expiresAt,
+      kaynak: 'manuel'
+    });
   });
 
   const devices = await prisma.cihaz.findMany({ where: { durum: 'aktif' } });

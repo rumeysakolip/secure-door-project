@@ -3728,6 +3728,97 @@ textarea.form-control {
   }
 }
 
+.admin-account-grid {
+  align-items: stretch;
+}
+
+.admin-account-grid .card-box {
+  min-width: 0;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 7px;
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.generated-credentials {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+}
+
+.generated-credentials > strong {
+  color: #1e3a8a;
+  font-size: 15px;
+}
+
+.generated-credentials > p {
+  margin: 5px 0 14px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.generated-credentials dl,
+.account-profile-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.generated-credentials dl > div,
+.account-profile-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 11px 0;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.generated-credentials dl > div:last-child,
+.account-profile-list > div:last-child {
+  border-bottom: 0;
+}
+
+.generated-credentials dt,
+.account-profile-list dt {
+  color: var(--text-muted, #64748b);
+  font-size: 13px;
+}
+
+.generated-credentials dd,
+.account-profile-list dd {
+  margin: 0;
+  color: var(--text-primary, #0f172a);
+  font-weight: 700;
+  text-align: right;
+}
+
+.generated-credentials code,
+.pin-history-code {
+  letter-spacing: 0.14em;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.compact-table table {
+  min-width: 620px;
+}
+
+.account-security-grid .card-box {
+  height: 100%;
+}
+
+#admin-users-table .btn-sm,
+#admin-pin-history-table .btn-sm {
+  white-space: nowrap;
+}
+
 @media (max-width: 480px) {
   .metrics-grid {
     grid-template-columns: 1fr;

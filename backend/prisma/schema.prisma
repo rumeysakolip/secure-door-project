@@ -153,8 +153,25 @@ model Kullanici {
   olaylar Olay[]
   offlineListeUyelikleri OfflineListeUyesi[]
   denetimKayitlari DenetimKaydi[]
+  kapiSifreGecmisi KapiSifreGecmisi[]
 
   @@map("kullanici")
+}
+
+model KapiSifreGecmisi {
+  kapiSifreId      BigInt     @id @default(autoincrement())
+  kullaniciId      BigInt
+  kullanici        Kullanici  @relation(fields: [kullaniciId], references: [kullaniciId], onDelete: Cascade)
+  pinSifreli       String?    @db.Text
+  pinHash          String?    @db.VarChar(255)
+  kaynak           String     @default("kullanici") @db.VarChar(32)
+  aktif            Boolean    @default(true)
+  olusturulma      DateTime   @default(now()) @db.Timestamptz()
+  gecerlilikBitis  DateTime?  @db.Timestamptz()
+
+  @@index([kullaniciId, aktif])
+  @@index([kullaniciId, olusturulma])
+  @@map("kapi_sifre_gecmisi")
 }
 
 // ============================================================
