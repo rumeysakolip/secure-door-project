@@ -92,7 +92,26 @@ void test_parse_invalid_command(void) {
     );
 }
 
-int main(int argc, char **argv) {
+void test_parse_firmware_update(void) {
+    DeviceCommand ota = MqttManager::parseCommand(
+        "{\"komut_tipi\":\"FIRMWARE_UPDATE\","
+        "\"firmware_url\":\"http://server/api/firmware/download/app.bin\","
+        "\"firmware_versiyon\":\"1.1.0\","
+        "\"firmware_md5\":\"0123456789abcdef0123456789abcdef\","
+        "\"firmware_boyut\":1050000,\"force\":true}"
+    );
+
+    TEST_ASSERT_TRUE(ota.type == CommandType::FIRMWARE_UPDATE);
+    TEST_ASSERT_EQUAL_STRING("1.1.0", ota.firmwareVersion.c_str());
+    TEST_ASSERT_EQUAL_STRING(
+        "0123456789abcdef0123456789abcdef",
+        ota.firmwareMd5.c_str()
+    );
+    TEST_ASSERT_EQUAL_UINT32(1050000, ota.firmwareSize);
+    TEST_ASSERT_TRUE(ota.forceFirmwareUpdate);
+}
+
+static int runAllTests() {
     UNITY_BEGIN();
     RUN_TEST(test_topics);
     RUN_TEST(test_serialize_card_request);
@@ -101,5 +120,19 @@ int main(int argc, char **argv) {
     RUN_TEST(test_parse_access_response);
     RUN_TEST(test_parse_other_commands);
     RUN_TEST(test_parse_invalid_command);
+    RUN_TEST(test_parse_firmware_update);
     return UNITY_END();
 }
+
+#ifdef ARDUINO
+void setup() {
+    delay(2000);
+    runAllTests();
+}
+
+void loop() {}
+#else
+int main(int argc, char **argv) {
+    return runAllTests();
+}
+#endif

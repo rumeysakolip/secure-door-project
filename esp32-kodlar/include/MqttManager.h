@@ -23,6 +23,7 @@ enum class CommandType {
     PASSWORD_RENEW,  // Günlük şifre listesi yenileme
     BLOCK,           // Kartı geçici engelleme
     UNBLOCK,         // Kart engelini kaldırma
+    FIRMWARE_UPDATE, // HTTP üzerinden OTA firmware güncellemesi
     ACCESS_RESPONSE,
     UNKNOWN
 };
@@ -52,6 +53,11 @@ struct DeviceCommand {
     std::string newPasswordListJson; // PASSWORD_RENEW için gelen JSON dizisi
     bool replacePasswordList = true;
     std::string targetCardUid;       // BLOCK/UNBLOCK için hedef kart UID
+    std::string firmwareUrl;         // FIRMWARE_UPDATE indirme adresi
+    std::string firmwareVersion;     // Hedef firmware sürümü
+    std::string firmwareMd5;         // Beklenen 32 karakterlik MD5
+    uint32_t firmwareSize = 0;       // Beklenen .bin boyutu
+    bool forceFirmwareUpdate = false;
     uint32_t timestampEpoch = 0;
 };
 
@@ -66,6 +72,12 @@ public:
     bool publishHeartbeat(int cihazId = 1);
     bool publishDoorStatus(bool isOpen);
     bool publishPasswordAck(bool success);
+    bool publishOtaStatus(
+        const char *status,
+        const char *message,
+        const std::string &targetVersion = "",
+        int progressPercent = -1
+    );
     bool isConnected();
 
     bool hasPendingCommand() const;

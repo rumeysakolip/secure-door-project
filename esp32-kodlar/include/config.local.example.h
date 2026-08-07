@@ -4,10 +4,11 @@
 #define WIFI_IDENTITY "" // Eduroam anonim kimliği; normal Wi-Fi için boş bırakın.
 #define WIFI_USERNAME "" // Eduroam kullanıcı adı; normal Wi-Fi için boş bırakın.
 #define WIFI_PASSWORD "kablosuz-ag-parolasi"
-#define MQTT_BROKER_HOST "192.168.1.10"
+#define MQTT_BROKER_HOST "10.9.2.50"
 #define MQTT_BROKER_PORT 1883
 #define DEVICE_ID 1
 #define DOOR_ID 1
+#define FIRMWARE_VERSION "1.0.0"
 
 #define RFID_SS_PIN 5
 #define RFID_RST_PIN 22

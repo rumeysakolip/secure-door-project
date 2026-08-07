@@ -3,6 +3,7 @@
 
 #ifdef ARDUINO
 #include "config.h"
+#include "FirmwareVersion.h"
 
 static MqttManager *g_activeInstance = nullptr;
 
@@ -69,6 +70,7 @@ bool MqttManager::publishHeartbeat(int cihazId) {
     doc["cihaz_id"] = cihazId;
     doc["durum"] = "cevrimici";
     doc["wifi_rssi"] = WiFi.RSSI();
+    doc["firmware_versiyon"] = FIRMWARE_VERSION;
     doc["zaman"] = millis();
 
     std::string payload;
@@ -101,6 +103,34 @@ bool MqttManager::publishPasswordAck(bool success) {
     std::string payload;
     serializeJson(doc, payload);
     std::string topic = "kapi/" + std::to_string(DEVICE_ID) + "/durum";
+    return _mqttClient.publish(topic.c_str(), payload.c_str());
+}
+
+bool MqttManager::publishOtaStatus(
+    const char *status,
+    const char *message,
+    const std::string &targetVersion,
+    int progressPercent
+) {
+    if (!_mqttClient.connected()) return false;
+
+    JsonDocument doc;
+    doc["cihaz_id"] = DEVICE_ID;
+    doc["durum"] = status;
+    doc["mesaj"] = message;
+    doc["mevcut_firmware"] = FIRMWARE_VERSION;
+    if (!targetVersion.empty()) {
+        doc["hedef_firmware"] = targetVersion;
+    }
+    if (progressPercent >= 0) {
+        doc["ilerleme"] = progressPercent;
+    }
+    doc["zaman"] = millis();
+
+    std::string payload;
+    serializeJson(doc, payload);
+    const std::string topic =
+        "kapi/" + std::to_string(DEVICE_ID) + "/ota-durum";
     return _mqttClient.publish(topic.c_str(), payload.c_str());
 }
 
@@ -226,6 +256,13 @@ DeviceCommand MqttManager::parseCommand(const std::string &jsonPayload) {
     } else if (komutTipi == "UNBLOCK") {
         cmd.type = CommandType::UNBLOCK;
         cmd.targetCardUid = doc["kart_uid"] | std::string("");
+    } else if (komutTipi == "FIRMWARE_UPDATE") {
+        cmd.type = CommandType::FIRMWARE_UPDATE;
+        cmd.firmwareUrl = doc["firmware_url"] | std::string("");
+        cmd.firmwareVersion = doc["firmware_versiyon"] | std::string("");
+        cmd.firmwareMd5 = doc["firmware_md5"] | std::string("");
+        cmd.firmwareSize = doc["firmware_boyut"] | 0;
+        cmd.forceFirmwareUpdate = doc["force"] | false;
     } else if (komutTipi == "ACCESS_RESPONSE" || komutTipi == "erisim-yanit") {
         cmd.type = CommandType::ACCESS_RESPONSE;
         cmd.requestId = doc["cihaz_olay_id"] | std::string("");

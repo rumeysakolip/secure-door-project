@@ -71,6 +71,9 @@ web_modules/
 .env.*
 !.env.example
 esp32-kodlar/include/config.local.h
+backend/firmware/*.bin
+backend/firmware/*.bin.json
+backend/firmware/*.tmp
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache

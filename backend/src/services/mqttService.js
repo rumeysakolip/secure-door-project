@@ -94,6 +94,7 @@ class MqttService {
   subscribeToTopics() {
     [
       'kapi/+/durum',
+      'kapi/+/ota-durum',
       'kapi/+/saglik',
       'kapi/+/erisim-istek'
     ].forEach((topic) => {
@@ -132,11 +133,24 @@ class MqttService {
 
     if (topic.endsWith('/durum')) {
       await this.handleDurumMesaji(cihaz, payload);
+    } else if (topic.endsWith('/ota-durum')) {
+      this.handleOtaDurumMesaji(cihaz, payload);
     } else if (topic.endsWith('/saglik')) {
       await this.handleSaglikMesaji(cihaz, payload);
     } else if (topic.endsWith('/erisim-istek')) {
       await this.handleErisimIstegi(cihaz, payload);
     }
+  }
+
+  handleOtaDurumMesaji(cihaz, payload) {
+    const status = payload.durum || 'BILINMIYOR';
+    const targetVersion = payload.hedef_firmware || '-';
+    const progress = Number.isFinite(Number(payload.ilerleme))
+      ? ` (${Number(payload.ilerleme)}%)`
+      : '';
+    console.log(
+      `[OTA] Cihaz ${cihaz.cihazId}: ${status}${progress}, hedef=${targetVersion}, mesaj=${payload.mesaj || '-'}`
+    );
   }
 
   async getSonBilinenDurum(cihazId) {
@@ -413,6 +427,7 @@ class MqttService {
       'sifre-guncelleme': 'PASSWORD_RENEW',
       'kart-engelle': 'BLOCK',
       'kart-engel-kaldir': 'UNBLOCK',
+      'firmware-guncelle': 'FIRMWARE_UPDATE',
       'erisim-yanit': 'ACCESS_RESPONSE'
     };
     const normalizedPayload = {

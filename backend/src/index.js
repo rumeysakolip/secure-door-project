@@ -21,6 +21,7 @@ const ihlalKaydiRotalari = require('./routes/ihlalKayitlari');
 const grupRotalari = require('./routes/gruplar');
 const yetkiKuraliRotalari = require('./routes/yetkiKurallari');
 const authRotalari = require('./routes/authRoutes');
+const firmwareRotalari = require('./routes/firmware');
 
 const arizaRotalari = require('./routes/arizalar');
 
@@ -49,6 +50,7 @@ app.get('/api/health', (req, res) => {
 
 // Auth Endpoint'leri (giriş yapma / token alma herkese açık)
 app.use('/api/auth', authRotalari);
+app.use('/api/firmware', firmwareRotalari);
 
 // Endpoint Bağlantıları
 app.use('/api/birimler', birimRotalari);
@@ -80,7 +82,7 @@ app.use((req, res) => {
 // 2. Global Hata (500) Yakalayıcı
 app.use((err, req, res, next) => {
     console.error('❌ Beklenmeyen Sunucu Hatası:', err.stack);
-    res.status(500).json({
+    res.status(err.statusCode || err.status || 500).json({
         success: false,
         error: 'Sunucu tarafında bir hata oluştu.',
         message: err.message

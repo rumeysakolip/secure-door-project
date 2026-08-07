@@ -15,6 +15,7 @@
 #include "MqttManager.h"
 #include "NetworkManager.h"
 #include "OfflineQueue.h"
+#include "OtaUpdater.h"
 #include "RtcManager.h"
 
 static byte rowPins[KeypadInput::ROW_COUNT] = {
@@ -26,6 +27,7 @@ static byte colPins[KeypadInput::COLUMN_COUNT] = {
 
 CardReader cardReader(RFID_SS_PIN, RFID_RST_PIN, RFID_SCK_PIN, RFID_MISO_PIN, RFID_MOSI_PIN);
 MqttManager mqttManager(MQTT_BROKER_HOST, MQTT_BROKER_PORT);
+OtaUpdater otaUpdater(mqttManager);
 LockController lock(RELAY_PIN);
 NetworkManager network(WIFI_SSID, WIFI_IDENTITY, WIFI_USERNAME, WIFI_PASSWORD);
 AccessControl accessControl;
@@ -242,6 +244,25 @@ static void processPendingCommands() {
                 command.replacePasswordList
             );
             mqttManager.publishPasswordAck(true);
+        } else if (command.type == CommandType::FIRMWARE_UPDATE) {
+            const bool safeToUpdate =
+                DoorState::mevcutDurumuAl() == Durum::BEKLEMEDE
+                && !pendingAccess.active
+                && doorSensorInitialized
+                && !lastDoorPhysicallyOpen
+                && !doorOpenAlarmActive;
+
+            if (!safeToUpdate) {
+                Serial.println("[OTA] Sistem/kapı güvenli durumda değil; güncelleme reddedildi.");
+                mqttManager.publishOtaStatus(
+                    "HATA",
+                    "Kapi kapali ve sistem beklemede olmali",
+                    command.firmwareVersion
+                );
+                continue;
+            }
+
+            otaUpdater.performUpdate(command);
         } else if (command.type == CommandType::ACCESS_RESPONSE) {
             if (!pendingAccess.active || command.requestId != pendingAccess.requestId) {
                 Serial.println("[AUTH] Eslesmeyen veya gecikmis MQTT erisim cevabi atlandi.");
