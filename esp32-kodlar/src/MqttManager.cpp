@@ -23,6 +23,11 @@ MqttManager::MqttManager(const char *brokerHost, uint16_t brokerPort) {
     _mqttClient.setServer(brokerHost, brokerPort);
     _mqttClient.setCallback(mqttCallbackTrampoline);
     _mqttClient.setBufferSize(4096);
+#if defined(MQTT_USE_TLS) && MQTT_USE_TLS
+    // Bulut broker TLS: sunucu sertifikasi dogrulanmaz ama trafik sifrelenir.
+    // Tam dogrulama istenirse setInsecure yerine setCACert(root_ca) kullanilabilir.
+    _wifiClient.setInsecure();
+#endif
     g_activeInstance = this;
 }
 
@@ -33,7 +38,11 @@ void MqttManager::attemptReconnect() {
 
     Serial.print("[MqttManager] Broker'a baglaniliyor... ");
     const std::string clientId = "SecureDoor_ESP32_" + std::to_string(DEVICE_ID);
+#if defined(MQTT_USERNAME) && defined(MQTT_PASSWORD)
+    if (_mqttClient.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
+#else
     if (_mqttClient.connect(clientId.c_str())) {
+#endif
         Serial.println("Baglandi!");
         _mqttClient.subscribe(_commandTopic.c_str());
         _reconnectBackoffMs = 1000;

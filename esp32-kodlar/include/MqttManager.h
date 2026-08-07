@@ -14,6 +14,14 @@
 #ifdef ARDUINO
 #include <Arduino.h>
 #include <WiFi.h>
+#include "config.h"
+// Bulut broker (TLS) veya yerel broker (düz TCP) seçimi config.h'daki
+// MQTT_USE_TLS makrosuna göre yapılır. TLS açıkken WiFiClientSecure kullanılır.
+#if defined(MQTT_USE_TLS) && MQTT_USE_TLS
+#include <WiFiClientSecure.h>
+#else
+#include <WiFiClient.h>
+#endif
 #include <PubSubClient.h>
 #endif
 
@@ -95,7 +103,11 @@ public:
 
 private:
 #ifdef ARDUINO
+#if defined(MQTT_USE_TLS) && MQTT_USE_TLS
+    WiFiClientSecure _wifiClient;
+#else
     WiFiClient _wifiClient;
+#endif
     PubSubClient _mqttClient{_wifiClient};
     std::string _eventTopic;
     std::string _commandTopic;

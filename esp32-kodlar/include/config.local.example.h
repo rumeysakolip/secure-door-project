@@ -10,6 +10,17 @@
 #define DOOR_ID 1
 #define FIRMWARE_VERSION "1.0.0"
 
+// --- Bulut MQTT broker (internet uzerinden erisim icin) ---
+// Yerel/anonim broker (10.9.2.50:1883) kullaniyorsan asagidaki 3 satiri comment birak.
+// HiveMQ Cloud gibi bir bulut broker kullaniyorsan:
+//   * Yukaridaki MQTT_BROKER_HOST -> cluster adresin (orn. xxxx.s1.eu.hivemq.cloud)
+//   * Yukaridaki MQTT_BROKER_PORT -> 8883
+//   * Asagidaki 3 satirin comment'ini kaldir ve doldur:
+//#define MQTT_USE_TLS 1
+//#define MQTT_USERNAME "broker_kullanici"
+//#define MQTT_PASSWORD "broker_parola"
+
+
 #define RFID_SS_PIN 5
 #define RFID_RST_PIN 22
 #define RFID_SCK_PIN 18
